@@ -1,10 +1,10 @@
 {
   "latestVersion": "2.0.0",
-  "releaseDate": "2026-10-05",
+  "releaseDate": "2026-10-12",
   "minSupportedVersion": "1.0.0",
   "downloadUrl": "https://gitee.com/feitian-zhang-fei/ferris-pulse/raw/main/FerrisPulse.exe",
-  "sha256": "6a15666cb7e950b9c103a60cd16945b87747de5bbc6193192592a73397883890",
-  "fileSize": 659968,
+  "sha256": "e7a637b7b721d6c37e9124498b23d338c4efd994be5f593febe590888e2261b3",
+  "fileSize": 663040,
 
   "changelog": [
     "【外设支持】扩展支持罗技、雷柏、NuPhy 及主流国产品牌外设，支持蓝牙耳机电量显示",

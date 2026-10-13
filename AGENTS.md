@@ -1,4 +1,4 @@
-# 电量管家 (FerrisPulse) Agent Rules & Superpowers Configuration
+﻿# 电量管家 (FerrisPulse) Agent Rules & Superpowers Configuration
 
 > 本文件为“电量管家”工作区的最高指令文件。在本项目中，Superpowers 默认开启，且必须与项目的 6 大开发铁律协同执行。
 

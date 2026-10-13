@@ -1,7 +1,13 @@
-# Temporary build artifacts
+# Temporary build artifacts & intermediate files
 *.dll
 *.pdb
 *.obj
+*.raw.exe
+Obfuscated/
+
+# Ignore compiled executables except the release binary
+*.exe
+!FerrisPulse.exe
 
 # Promotional & local distribution assets
 *.mp4
@@ -17,17 +23,21 @@ audio_voice/
 *.log
 
 # Ignore test scripts & scratch images in root
-test_*
-capture_*
-MakeShowcase*
+/test_*
+/capture_*
+/MakeShowcase*
 backup_*/
 actual_*
 final_*
 promo_*
-*.png
-!screenshots/*.png
-!app.png
-
-TestConsole.exe
-render_menu_from_exe.cs
 *.jpg
+
+# Image policies
+*.png
+!app.png
+!screenshots/*.png
+!resources/*.png
+!assets/*.png
+
+# Allow tests directory
+!tests/

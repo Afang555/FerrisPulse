@@ -1,60 +1,117 @@
-# ⚡ FerrisPulse · 灵脉 (多品牌外设电量管家与独占感知引擎) v2.0.0
+﻿# ⚡ FerrisPulse · 灵脉 (跨品牌外设调度中心) v2.0.0
 
 <p align="center">
-  <img src="app.png" width="96" height="96" alt="FerrisPulse Logo" />
+  <img src="app.png" width="108" height="108" alt="FerrisPulse Logo" />
 </p>
 
 <p align="center">
-  <b>专为雷蛇、罗技、雷柏、NuPhy 及国产电竞外设打造的高颜值、极轻量 Windows 任务栏电量与硬件管理引擎</b>
+  <b>从一个鼠标，到一整张桌面 · 跨品牌直连 · 自动 8000Hz</b><br>
+  <i>专为雷蛇、罗技、国产电竞外设打造的纯原生、极轻量 Windows 任务栏电量与硬件调度引擎</i>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?style=flat-square&logo=windows" alt="Platform" />
-  <img src="https://img.shields.io/badge/.NET%20Framework-4.0%2B-512BD4?style=flat-square&logo=dotnet" alt=".NET Framework" />
-  <img src="https://img.shields.io/badge/RAM-~15%20MB-00ff55?style=flat-square" alt="Memory" />
-  <img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="License" />
+  <a href="https://github.com/Ferris-echo/FerrisPulse/releases"><img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?style=flat-square&logo=windows" alt="Platform" /></a>
+  <a href="https://github.com/Ferris-echo/FerrisPulse"><img src="https://img.shields.io/badge/.NET%20Framework-4.0%20(Pure%20Native)-512BD4?style=flat-square&logo=dotnet" alt=".NET Framework" /></a>
+  <a href="https://github.com/Ferris-echo/FerrisPulse"><img src="https://img.shields.io/badge/Memory-~12%20MB%20RAM-00ff88?style=flat-square" alt="Memory" /></a>
+  <a href="https://github.com/Ferris-echo/FerrisPulse"><img src="https://img.shields.io/badge/CPU-0.00%25-00ff88?style=flat-square" alt="CPU" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL%20v3.0-blue.svg?style=flat-square" alt="License: GPL v3" /></a>
 </p>
 
 ---
 
-## 💡 为什么需要它？
+## 📖 项目简介
 
-官方驱动全家桶（如 **Razer Synapse 雷云**、**Logitech G HUB** 等）常驻 8~10 个后台进程，长期吞噬 **500MB~1GB** 物理内存与 CPU 资源，开机变慢，且设备静置休眠后经常误报 0% 电量。
+**FerrisPulse · 灵脉**（原名《雷蛇电量管家》）诞生于一个纯粹的极客初衷：**彻底干掉官方动辄 1GB、常驻 10+ 后台守护服务的臃肿驱动全家桶**（如 Razer Synapse 雷云、Logitech G HUB 等）。
 
-**FerrisPulse · 灵脉** 彻底颠覆这一切：
-* ⚡ **极速轻量**：仅约 **15MB** 常驻内存，0.1秒秒速冷启，单文件绿色免安装，CPU 占用长期 **0.00%**。
-* 🚀 **全自动在线更新与原地热替换**：零服务器成本与全球镜像节点容灾，新版极速流光下载、哈希强校验与后台原子进程无感原地替换自重启，再无需手动下载覆盖。
-* ℹ️ **黑金电竞美学关于与致谢卡片**：无边框暗黑圆角与呼吸发光 Logo，致敬作者独立开发，集成在线检测与一键赞赏支持。
-* 🎮 **全屏电竞游戏智能感知与回报率自动切换**：
-  - 独创进程级前台焦点精准感知与专属游戏管理窗口，一键捕获当前运行游戏或添加本地 `.exe`，100% 反作弊安全；
-  - 进入游戏无感自动切入高回报率（如 4000Hz / 8000Hz），退出游戏智能平滑回退常规桌面回报率（如 1000Hz），最大化降低无线耗电；
-  - 具备 60FPS 平滑缓动风琴动画、实时硬件生效指示徽章、浏览器/播放器防误触白名单与 1200ms 防抖仲裁，搭配无感游戏 OSD 与非阻塞全屏双频电子提示音盲操确认。
-* 🌐 **多品牌全生态原生直连**：
-  - **雷蛇 (Razer)**：专有 90 字节 Report 协议，全系无线鼠标电量直接读取与回报率设置；
-  - **罗技 (Logitech)**：自研 HID++ 1.0/2.0+ 驱动引擎，原生握手 Lightspeed 接收器、优联与有线通道，免驱动获取固件全称与精准电量；
-  - **雷柏 (Rapoo)**：专有 64 字节 Feature Report 协议直连；
-  - **NuPhy (努斐)**：全系机械键盘休眠超时调节、WinLock 开关、背光开关与无级亮度调节；
-  - **国产电竞矩阵 (CompX 方案)**：ATK、VGN、VXE、迈从 (MCHOSE)、狼烛 (AULA) 等多通道设备识别与切换。
-* 🛡️ **五重独占键盘测速仪 (Exclusive Keyboard Grab)**：
-  - 全键并发无冲 (NKRO) 与击键毫秒延迟实时测速；
-  - 采用 **RawInput 硬件独占锁 + 低级钩子 + 输入法全脱钩 + 菜单抑制**，测试期间彻底阻断系统快捷键与微信、QQ、截图软件等一切第三方热键，支持按 ESC 一键安全退出。
-* 🎨 **Windows 11 原生美学**：深度契合 Win11 暗黑圆角、Mica 拟态半透明质感，三大原生托盘风格自由切换。
-* 🔋 **独家智能休眠待机算法**：区分「物理拔出断联」与「静置休眠待机」，休眠时显示高雅琥珀金待机状态并记忆电量，拿起鼠标瞬间毫秒级刷新。
-* 🎯 **全屏游戏无感 OSD**：Win32 底层零焦点悬浮 (`SWP_NOACTIVATE`) 与鼠标 100% 物理穿透 (`WS_EX_TRANSPARENT`)，调节 DPI 与回报率顺滑浮现，无边框全屏游戏绝不切回桌面、绝不吞枪！
-
+历经数月重构与底层硬件协议解构，2.0 时代正式蜕变为**跨品牌外设统一调度引擎**：
+* ⚡ **极致轻量**：纯 C# 5.0 / Win32 原生调用，零第三方 DLL 依赖，常驻内存仅约 **12.8 MB**，CPU 占用长期 **0.00%**。
+* 🎮 **8000Hz 独占感知**：日常 1000Hz 节能续航；进入 CS2、无畏契约、Apex 等全屏游戏瞬间毫秒级直切 4000Hz/8000Hz，退出游戏平滑回退。
+* 🎯 **战术级穿透 OSD**：全屏游戏中调节 DPI / 回报率，右下角无感浮现战术 OSD 与柔和声效，绝不切回桌面、绝不吞枪、100% 穿透防误触。
+* 🔋 **Win11 原生 Mica 美学**：暗黑圆角磨砂、任务栏原生彩色流光电量、多设备拖拽排序、独家智能静置休眠感知算法。
 
 ---
 
-## 📦 获取与使用
+## 🏛️ 系统架构与硬核技术亮点 (Architecture & Highlights)
 
-* **官方便携包**：直接从 [GitHub Releases](https://github.com/Ferris-echo/FerrisPulse/releases/latest) 或 [Gitee 发行版](https://gitee.com/feitian-zhang-fei/ferris-pulse/releases) 下载 `FerrisPulse_v2.0_Portable.zip`。
-* **单文件直链**：国内免梯子可直接通过 [Gitee Raw 直链](https://gitee.com/feitian-zhang-fei/ferris-pulse/raw/main/FerrisPulse.exe) 下载最新 `FerrisPulse.exe`。
-* **解压即用**：绿色免安装，双击 `FerrisPulse.exe` 即可直接常驻系统托盘运行。
-* **初次运行提示**：因个人作品未购买商业签名证书，若首次启动弹出 Windows SmartScreen 提示，点击 **「更多信息」 -> 「仍要运行」** 即可安全启动。
+本项目完全采用现代模块化工程规范设计，适合作为桌面底层系统开发与软硬件交互的参考实践：
+
+```
+FerrisPulse/
+├── src/
+│   ├── Core/         # 单例守护、Win32 消息循环、注册表自启动守护、原子热更新
+│   ├── Hardware/     # 底层 HID 通信、私有协议解构 (Razer 90B / Logitech HID++ / CompX)
+│   ├── Models/       # 外设实体状态模型、配置持久化契约
+│   ├── Services/     # 前台游戏焦点检测仲裁、回报率动态调度、非阻塞声效反馈
+│   └── UI/           # Win11 Mica 窗体、GDI+ 高精度自绘引擎、零焦点穿透 OSD 浮窗
+└── build.bat         # 纯原生构建脚本 (调用系统内置 csc.exe，零工具链安装成本)
+```
+
+### 1. 跨品牌硬件私有 HID 协议原生逆向直连
+* **雷蛇 (Razer)**：解构专有 90 字节双向 Report 协议，直连 2.4G 接收器与有线通道，免开雷云实现毫秒级电量获取与回报率切换。
+* **罗技 (Logitech)**：自研原生 **HID++ 1.0 / 2.0+** 协议引擎，握手 Lightspeed 与统一接收器，直接读取固件全称与精准百分比。
+* **NuPhy (努斐)**：全系客制化键盘休眠超时调节、WinLock 锁、RGB 背光与无级亮度控制。
+* **国产电竞矩阵 (CompX 方案)**：深度适配 ATK、VGN、VXE、迈从 (MCHOSE)、狼蛛 (AULA) 等国产主流 8K 无线鼠标。
+
+### 2. 100% 反作弊安全的游戏焦点仲裁引擎
+* **零内存读写，零 DLL 注入**：完全基于 Windows 原生 `GetForegroundWindow` 与 `GetWindowThreadProcessId` 进行进程特征比对。
+* **严苛的仲裁机制**：内置 1200ms 窗口切换防抖、全屏独占排他性判断、浏览器与视频播放器防误触白名单，确保在高烈度竞技中绝不误判、绝无作弊封号风险。
+
+### 3. 极速纯原生编译与零依赖设计
+* 抛弃现代前端框架（Electron / Tauri）的数百兆开销，严格遵循 **C# 5.0 / .NET Framework 4.0** 语法基准。
+* 只要是 Windows 10 / 11 操作系统，系统原生自带运行环境，解压单文件即可直接运行。
 
 ---
 
-## 📄 声明与许可
+## 🛡️ 反作弊与安全性声明 (Anti-Cheat & Security FAQ)
 
-本项目为纯净绿色免费软件 (Freeware)，永久面向广大电竞玩家免费提供。未经作者许可，严禁用于任何商业牟利或二次打包分发行为。
+> **问：在《无畏契约 (Valorant)》《CS2》《Apex 英雄》等竞技游戏中使用会被封号吗？**
 
+**答：绝对不会。**
+1. **纯标准 Windows API**：灵脉仅使用操作系统官方公开的 `user32.dll` 查询“当前哪个窗口在最前台”，就像 OBS 或 Discord 检测你是否在玩游戏一样。
+2. **纯标准 HID 硬件通信**：切换回报率时，向鼠标发送的是该品牌鼠标固件公开支持的标准 HID 特征包，完全等同于你在官方驱动里点了一下“切换回报率”。
+3. **零敏感行为**：本程序没有对任何游戏进程调用 `OpenProcess(PROCESS_VM_READ/WRITE)`，不挂任何 API Hook，不注入任何 DLL，代码全部开源接受全球开发者审计。
+
+---
+
+## 🛠️ 本地编译与构建 (Build from Source)
+
+本项目无需安装几十 GB 的庞大 Visual Studio，仅需 Windows 原生自带的 .NET Framework 编译器即可构建：
+
+```cmd
+:: 1. 克隆代码仓库
+git clone https://github.com/Ferris-echo/FerrisPulse.git
+cd FerrisPulse
+
+:: 2. 执行一键原生编译 (调用系统内置 csc.exe)
+build.bat
+```
+
+编译完成后将在当前目录下直接生成高性能单文件可执行程序 `FerrisPulse.exe`。
+
+---
+
+## 🤝 参与贡献与设备适配 (Contributing)
+
+我们非常欢迎社区极客共同丰富外设硬件支持库！
+
+如果你手里有尚未支持的无线鼠标/键盘（如雷捷、玄派、蜻蜓等国产新方案）：
+1. 欢迎在 **[Issues](https://github.com/Ferris-echo/FerrisPulse/issues)** 提交设备适配申请；
+2. 提供你的设备型号、连接方式（2.4G/有线）以及设备硬件 ID（`VID` 与 `PID`）；
+3. 若具备抓包能力，可提供 Wireshark / USBPcap 交互数据包，我们将以最快速度完成协议适配。
+
+---
+
+## 📄 开源许可证 (License)
+
+本项目采用 **[GNU General Public License v3.0 (GPLv3)](LICENSE)** 协议开源。
+
+* **自由分享与修改**：你可以自由使用、研究、修改并分发本项目代码；
+* **开源传染性保护**：任何修改、衍生或整合本项目代码的二次开发作品，必须同样保持 **完全开源 (GPLv3)**；
+* **严禁闭源商业牟利**：严禁任何商业实体将本项目代码闭源打包、嵌入商业流氓软件或转售牟利。让我们共同守护纯粹的开源极客精神！
+
+---
+
+<p align="center">
+  <b>如果 FerrisPulse 对你的日常桌面有所帮助，欢迎在 GitHub 点亮一颗 ⭐️ Star 支持作者！</b><br>
+  感谢每一位从 1.0《雷蛇电量管家》一路陪伴蜕变至今的玩家伙伴！
+</p>

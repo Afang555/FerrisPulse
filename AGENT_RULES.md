@@ -66,7 +66,7 @@
 
 ## 7. 工作区聚焦与文件系统卫生规范 (Workspace Focus & Repository Cleanliness)
 - **工作区唯一锁定**:
-  - 本项目唯一有效工作区为 **`D:\电量管家\`**。
+  - 本项目唯一有效工作区为 **`D:\FerrisPulse · 灵脉\`**。
   - 严禁向已弃用的 `proud-hertz` 或其他外部目录写入任何代码、文档或脚本。
 - **根目录纯净化 (Zero Scatter in Root)**:
   - 根目录只允许保留核心工程标准文件：

@@ -35,7 +35,7 @@
 5. **任务栏自愈与自启动守护**: 必须维护注册表自启动与 `WM_TASKBARCREATED` 托盘重建自愈逻辑；桌面图标绝不静默自建，严格由用户托盘手动触发。
 6. **维护准则注释保留**: 每个代码文件头部必须永久保留 `// ⚠️ AI 维护准则 (AI MAINTENANCE DIRECTIVE - DO NOT REMOVE) ⚠️`。
 7. **工作区锁定与文件卫生规范**:
-   - 唯一合法工作区为 **`D:\电量管家\`**（`proud-hertz` 已彻底弃用）。
+   - 唯一合法工作区为 **`D:\FerrisPulse · 灵脉\`**（`proud-hertz` 与 `电量管家` 原目录已彻底废弃）。
    - 根目录只保留标准工程文件，严禁散落临时测试图、草稿代码或日志。
    - **严禁向 Git 仓库提交编译二进制（`*.exe`, `*.zip` 等）**，发布走 GitHub Releases 附件。
    - 临时脚本放 `tools/scratch/`，宣传素材放 `promo/`，归档放 `archive/`（均已配 `.gitignore`）。

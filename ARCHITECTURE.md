@@ -8,7 +8,7 @@
 ## 1. 系统目录拓扑与功能认知地图 (Cognitive Map)
 
 ```
-D:\电量管家\
+D:\FerrisPulse · 灵脉\
 ├── FerrisPulse.exe             [单一原生二进制可执行文件]
 ├── app.ico                     [程序主图标]
 ├── build.bat                   [单命令模块化极速构建脚本]

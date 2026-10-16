@@ -8,38 +8,17 @@ if not exist "%CSC%" (
 )
 
 echo =======================================================
-echo Compiling FerrisPulse (Modular Architecture)...
+echo Compiling FerrisPulse (Open-Source Clean Raw Binary)...
 echo Compiler: %CSC%
 echo =======================================================
 
-"%CSC%" /target:winexe /optimize+ /codepage:65001 /win32icon:app.ico /r:System.Drawing.dll /r:System.Windows.Forms.dll /out:FerrisPulse.raw.exe /recurse:src\*.cs
+"%CSC%" /target:winexe /optimize+ /codepage:65001 /win32icon:app.ico /r:System.Drawing.dll /r:System.Windows.Forms.dll /out:FerrisPulse.exe /recurse:src\*.cs
 
 if %ERRORLEVEL% neq 0 (
     echo [FAILED] Compilation failed with error code: %ERRORLEVEL%
     exit /b %ERRORLEVEL%
 )
 
-echo =======================================================
-echo Running Obfuscar Anti-Decompilation Protection...
-echo =======================================================
-
-if not exist "tools\obfuscar\Obfuscar.Console.exe" (
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\setup_obfuscator.ps1
-)
-
-if exist "tools\obfuscar\Obfuscar.Console.exe" (
-    tools\obfuscar\Obfuscar.Console.exe -s tools\obfuscar\obfuscar.xml
-    if exist "Obfuscated\FerrisPulse.raw.exe" (
-        copy /y "Obfuscated\FerrisPulse.raw.exe" "FerrisPulse.exe" >nul
-        del /f /q "FerrisPulse.raw.exe" >nul 2>&1
-        rmdir /s /q "Obfuscated" >nul 2>&1
-        echo [SUCCESS] Build and Obfuscation successful: FerrisPulse.exe
-        exit /b 0
-    )
-)
-
-echo [WARNING] Obfuscar unavailable or failed, falling back to raw binary.
-move /y "FerrisPulse.raw.exe" "FerrisPulse.exe" >nul
-echo [SUCCESS] Build successful (Raw): FerrisPulse.exe
+echo [SUCCESS] Build successful (Pure Open-Source Raw Binary): FerrisPulse.exe
 
 endlocal

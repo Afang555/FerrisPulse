@@ -84,13 +84,6 @@ namespace RazerBatteryTray
                 }
             }
 
-            // 首次手动运行生命周期检查：创建桌面快捷方式（若未初始化且非开机自启）
-            try
-            {
-                StartupManager.EnsureDesktopShortcutFirstRun(isAutoStart);
-            }
-            catch { }
-
             // 6. 系统全局命名互斥体单实例管理（取代暴力 Process.Kill）
             bool isNewInstance = false;
             try

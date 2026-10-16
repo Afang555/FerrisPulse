@@ -1,12 +1,11 @@
 ﻿# tests\test_startup_shortcut_policy.ps1
-# 验证方案一：绿色免安装桌面快捷方式全生命周期与托盘手动创建
+# Clean portable desktop shortcut test
 $ErrorActionPreference = "Stop"
 
 $asmPath = Join-Path $PSScriptRoot "..\FerrisPulse.exe"
 if (-not (Test-Path $asmPath)) { $asmPath = "FerrisPulse.exe" }
 $fullPath = (Resolve-Path $asmPath).Path
-$bytes = [System.IO.File]::ReadAllBytes($fullPath)
-$asm = [System.Reflection.Assembly]::Load($bytes)
+$asm = [System.Reflection.Assembly]::LoadFile($fullPath)
 
 $tStartup = $asm.GetType("RazerBatteryTray.StartupManager")
 $tConfig = $asm.GetType("RazerBatteryTray.ConfigManager")
@@ -16,7 +15,7 @@ if ($tStartup -eq $null) {
     exit 1
 }
 
-# 1. 契约校验：检查方法签名与配置键定义
+# 1. Contract verification
 $mCreate = $tStartup.GetMethod("CreateDesktopShortcut", [System.Reflection.BindingFlags]"Public,Static")
 if ($mCreate -eq $null) {
     Write-Host "FAIL: Method StartupManager.CreateDesktopShortcut not found!" -ForegroundColor Red
@@ -29,65 +28,81 @@ if ($mFirstRun -eq $null) {
     exit 1
 }
 
-$fKey = $tConfig.GetField("DesktopShortcutInitialized", [System.Reflection.BindingFlags]"Public,Static")
-if ($fKey -eq $null) {
-    Write-Host "FAIL: Field ConfigManager.DesktopShortcutInitialized not found!" -ForegroundColor Red
+$mAumid = $tStartup.GetMethod("EnsureAppShortcutWithAumid", [System.Reflection.BindingFlags]"Public,Static")
+if ($mAumid -eq $null) {
+    Write-Host "FAIL: Method StartupManager.EnsureAppShortcutWithAumid not found!" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "PASS: Public APIs and Registry Key contracts exist." -ForegroundColor Green
+Write-Host "PASS: Public APIs contracts exist." -ForegroundColor Green
 
-# 2. 模拟生命周期测试
-$regKey = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey("Software\FerrisPulse")
-
-# 测试场景 A: 开机自启 (isAutoStart = true) 严禁初始化桌面快捷方式
-$regKey.SetValue("DesktopShortcutInitialized", 0, [Microsoft.Win32.RegistryValueKind]::DWord)
-$mFirstRun.Invoke($null, @($true))
-$valA = [int]$regKey.GetValue("DesktopShortcutInitialized", -1)
-if ($valA -ne 0) {
-    Write-Host "FAIL: AutoStart unexpectedly modified DesktopShortcutInitialized!" -ForegroundColor Red
-    exit 1
-}
-Write-Host "PASS: Scenario A - AutoStart strictly respects silent boot." -ForegroundColor Green
-
-# 测试场景 B: 首次手动运行 (isAutoStart = false 且未初始化)
-$mFirstRun.Invoke($null, @($false))
-$valB = [int]$regKey.GetValue("DesktopShortcutInitialized", -1)
-if ($valB -ne 1) {
-    Write-Host "FAIL: First manual run failed to set DesktopShortcutInitialized to 1!" -ForegroundColor Red
-    exit 1
-}
-Write-Host "PASS: Scenario B - First manual run initialized shortcut and set flag = 1." -ForegroundColor Green
-
-# 测试场景 C: 随后运行 (已有初始化标记)
-# 假定用户删除了快捷方式，再次调用 EnsureDesktopShortcutFirstRun(false) 绝不反弹
-$mFirstRun.Invoke($null, @($false))
-$valC = [int]$regKey.GetValue("DesktopShortcutInitialized", -1)
-if ($valC -ne 1) {
-    Write-Host "FAIL: Subsequent run corrupted flag state!" -ForegroundColor Red
-    exit 1
-}
-Write-Host "PASS: Scenario C - Subsequent run honors user deletion without re-populating." -ForegroundColor Green
-
-# 测试场景 D: 手动恢复 (用户点击托盘创建桌面快捷方式)
-$retD = $mCreate.Invoke($null, @($false))
-Write-Host "PASS: Scenario D - Manual invocation completed successfully." -ForegroundColor Green
-
-# 3. 目标路径防篡改校验：严禁任何测试环境反射调用将 powershell.exe / cmd.exe 写入桌面快捷方式
 $desktop = [Environment]::GetFolderPath([Environment+SpecialFolder]::Desktop)
-$lnkPath = Join-Path $desktop "FerrisPulse · 灵脉.lnk"
-if (Test-Path $lnkPath) {
-    $wsh = New-Object -ComObject WScript.Shell
-    $sc = $wsh.CreateShortcut($lnkPath)
-    if ($sc.TargetPath -like "*powershell*" -or $sc.TargetPath -like "*cmd.exe*") {
-        Write-Host "FAIL: Desktop shortcut TargetPath was corrupted to: $($sc.TargetPath)!" -ForegroundColor Red
-        exit 1
-    }
-    if (-not ($sc.TargetPath -like "*FerrisPulse.exe*")) {
-        Write-Host "FAIL: Desktop shortcut TargetPath does not point to FerrisPulse.exe: $($sc.TargetPath)!" -ForegroundColor Red
-        exit 1
-    }
-    Write-Host "PASS: Desktop shortcut TargetPath strictly verified: $($sc.TargetPath)" -ForegroundColor Green
+$desktopLnk = Join-Path $desktop "FerrisPulse · 灵脉.lnk"
+
+# Clean up desktop shortcut before test
+if (Test-Path $desktopLnk) {
+    Remove-Item -Force $desktopLnk
+}
+
+# Reset registry flag to 0 to simulate clean / first run
+$regKey = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey("Software\FerrisPulse")
+$regKey.SetValue("DesktopShortcutInitialized", 0, [Microsoft.Win32.RegistryValueKind]::DWord)
+
+# Scenario A: First manual run (isAutoStart = false) MUST NOT create desktop shortcut
+$mFirstRun.Invoke($null, @($false))
+if (Test-Path $desktopLnk) {
+    Write-Host "FAIL: EnsureDesktopShortcutFirstRun unexpectedly created a shortcut on Desktop during manual run!" -ForegroundColor Red
+    Remove-Item -Force $desktopLnk
+    exit 1
+}
+Write-Host "PASS: Scenario A - Manual run strictly keeps Desktop clean." -ForegroundColor Green
+
+# Scenario B: Autostart run (isAutoStart = true) MUST NOT create desktop shortcut
+$mFirstRun.Invoke($null, @($true))
+if (Test-Path $desktopLnk) {
+    Write-Host "FAIL: EnsureDesktopShortcutFirstRun unexpectedly created a shortcut on Desktop during autostart!" -ForegroundColor Red
+    Remove-Item -Force $desktopLnk
+    exit 1
+}
+Write-Host "PASS: Scenario B - AutoStart run strictly keeps Desktop clean." -ForegroundColor Green
+
+# Scenario C: EnsureAppShortcutWithAumid must not touch Desktop
+$mAumid.Invoke($null, $null)
+if (Test-Path $desktopLnk) {
+    Write-Host "FAIL: EnsureAppShortcutWithAumid leaked a shortcut onto Desktop!" -ForegroundColor Red
+    Remove-Item -Force $desktopLnk
+    exit 1
+}
+$startMenu = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::ApplicationData)) "Microsoft\Windows\Start Menu\Programs"
+$startLnk = Join-Path $startMenu "FerrisPulse · 灵脉.lnk"
+if (-not (Test-Path $startLnk)) {
+    Write-Host "FAIL: Start Menu AUMID shortcut was not created!" -ForegroundColor Red
+    exit 1
+}
+Write-Host "PASS: Scenario C - AUMID shortcut correctly placed only in Start Menu." -ForegroundColor Green
+
+# Scenario D: Manual CreateDesktopShortcut from tray MUST succeed
+$retD = [bool]$mCreate.Invoke($null, @($false))
+if (-not $retD -or -not (Test-Path $desktopLnk)) {
+    Write-Host "FAIL: Manual CreateDesktopShortcut failed to create shortcut on Desktop!" -ForegroundColor Red
+    exit 1
+}
+
+$wsh = New-Object -ComObject WScript.Shell
+$sc = $wsh.CreateShortcut($desktopLnk)
+if ($sc.TargetPath -like "*powershell*" -or $sc.TargetPath -like "*cmd.exe*") {
+    Write-Host "FAIL: Desktop shortcut TargetPath was corrupted to: $($sc.TargetPath)!" -ForegroundColor Red
+    exit 1
+}
+if (-not ($sc.TargetPath -like "*FerrisPulse.exe*")) {
+    Write-Host "FAIL: Desktop shortcut TargetPath does not point to FerrisPulse.exe: $($sc.TargetPath)!" -ForegroundColor Red
+    exit 1
+}
+Write-Host "PASS: Scenario D - Manual invocation explicitly and accurately creates desktop shortcut: $($sc.TargetPath)" -ForegroundColor Green
+
+# Clean up desktop shortcut after test
+if (Test-Path $desktopLnk) {
+    Remove-Item -Force $desktopLnk
 }
 
 Write-Host "ALL TESTS PASSED for test_startup_shortcut_policy.ps1" -ForegroundColor Green

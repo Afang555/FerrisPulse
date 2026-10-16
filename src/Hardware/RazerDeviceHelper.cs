@@ -56,6 +56,7 @@ namespace RazerBatteryTray
                 case 0x00C1: return 0x00C0; // Viper V3 Pro Dongle -> Viper V3 Pro Wired
                 case 0x00C2: return 0x00C0; // Viper V3 Pro Sentinels/SE Wired -> Viper V3 Pro
                 case 0x00C3: return 0x00C0; // Viper V3 Pro Sentinels/SE Dongle -> Viper V3 Pro
+                case 0x00DF: return 0x00DE; // Viper V3 Pro SE Dongle -> Viper V3 Pro SE Wired
                 case 0x00AD: return 0x00AC; // Viper V3 HyperSpeed Dongle -> Wired
                 case 0x00B7: return 0x00B6; // DeathAdder V3 Pro Dongle -> Wired
                 case 0x00B3: return 0x00B2; // DeathAdder V3 HyperSpeed Dongle -> Wired
@@ -229,6 +230,8 @@ namespace RazerBatteryTray
             { 0x00C1, "Razer Viper V3 Pro" },
             { 0x00C2, "Razer Viper V3 Pro" },
             { 0x00C3, "Razer Viper V3 Pro" },
+            { 0x00DE, "Razer Viper V3 Pro SE" },
+            { 0x00DF, "Razer Viper V3 Pro SE" },
             { 0x00AC, "Razer Viper V3 HyperSpeed" },
             { 0x00AD, "Razer Viper V3 HyperSpeed" },
             { 0x00B4, "Razer Viper V2 Pro" },
@@ -502,7 +505,7 @@ namespace RazerBatteryTray
                 curPid == 0x00C5 || curPid == 0x00C1 || curPid == 0x00C3 || curPid == 0x0088 ||
                 curPid == 0x0072 || curPid == 0x0090 || curPid == 0x00A3 || curPid == 0x00B3 ||
                 curPid == 0x0008 || curPid == 0x007B || curPid == 0x0092 || curPid == 0x00B9 ||
-                curPid == 0x00E6)
+                curPid == 0x00E6 || curPid == 0x00DF)
             {
                 return true;
             }
@@ -1672,7 +1675,7 @@ namespace RazerBatteryTray
         {
             string name = !string.IsNullOrEmpty(deviceName) ? deviceName.ToLowerInvariant() : "";
             // Focus Pro 35K Gen-2: DeathAdder V4 Pro, Viper V4 Pro, Viper V3 Pro, Basilisk V3 Pro 35K, etc.
-            if (pid == 0x00BF || pid == 0x00BE || pid == 0x00E6 || pid == 0x00E5 || name.Contains("v4 pro") || name.Contains("viper v3 pro") || name.Contains("35k"))
+            if (pid == 0x00BF || pid == 0x00BE || pid == 0x00E6 || pid == 0x00E5 || pid == 0x00DF || pid == 0x00DE || name.Contains("v4 pro") || name.Contains("viper v3 pro") || name.Contains("35k"))
             {
                 var cap = new RazerDpiCapability();
                 cap.MinDpi = 100;

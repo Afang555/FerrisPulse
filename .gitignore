@@ -1,43 +1,51 @@
-# Temporary build artifacts & intermediate files
+# ============================================================================
+# FerrisPulse Git Ignore Rules
+# 遵从纯净开源仓库准则：源码、文档与测试入库，严禁向版本管理提交任何编译二进制
+# ============================================================================
+
+# 1. 编译产物与二进制文件 (Build Artifacts - 严禁提交，发布走 GitHub Releases)
+*.exe
 *.dll
 *.pdb
 *.obj
 *.raw.exe
+FerrisPulse.exe
+*.zip
+*.7z
+*.rar
+FerrisPulse_v2.0_Portable.zip
 Obfuscated/
 
-# Ignore compiled executables except the release binary
-*.exe
-!FerrisPulse.exe
+# 2. 本地归档、宣传制作素材与草稿调试 (Local & Internal Assets)
+archive/
+promo/
+tools/scratch/
+assets/archive_screenshots/
+.superpowers/
+.cursorrules
+*.log
+*.tmp
+aumid_debug.txt
 
-# Promotional & local distribution assets
+# 3. 多媒体素材与视频音效
 *.mp4
 *.wav
 *.m4a
-*.zip
-!FerrisPulse_v2.0_Portable.zip
-*.html
-*.txt
-!使用说明与常见问题.txt
-!更新日志.txt
-audio_voice/
-*.log
-
-# Ignore test scripts & scratch images in root
-/test_*
-/capture_*
-/MakeShowcase*
-backup_*/
-actual_*
-final_*
-promo_*
 *.jpg
 
-# Image policies
+# 4. 图片资源管控 (仅允许官方 Logo 与核心 UI 矢量资源)
 *.png
 !app.png
-!screenshots/*.png
 !resources/*.png
-!assets/*.png
 
-# Allow tests directory
+# 5. 文本与配置管控
+*.txt
+!docs/FAQ.txt
+!docs/CHANGELOG_LEGACY.txt
+
+# 6. 保留核心工程与测试目录
 !tests/
+!tools/
+!docs/
+!src/
+!resources/

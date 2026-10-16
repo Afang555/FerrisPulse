@@ -85,6 +85,17 @@ namespace RazerBatteryTray
                     }
                 }
 
+                // 尝试从当前工作目录探查
+                string curDir = Directory.GetCurrentDirectory();
+                if (!string.IsNullOrEmpty(curDir))
+                {
+                    string candidateCur = Path.Combine(curDir, "FerrisPulse.exe");
+                    if (File.Exists(candidateCur))
+                    {
+                        return candidateCur;
+                    }
+                }
+
                 // 尝试从程序集所在目录探查
                 string asmLocation = typeof(StartupManager).Assembly.Location;
                 if (!string.IsNullOrEmpty(asmLocation))
@@ -231,41 +242,39 @@ namespace RazerBatteryTray
                 }
                 catch { }
 
-                if (File.Exists(lnkPath))
+                if (!File.Exists(lnkPath))
                 {
-                    try { File.Delete(lnkPath); } catch { }
+                    IShellLinkW link = (IShellLinkW)new ShellLink();
+                    link.SetPath(targetExe);
+                    link.SetWorkingDirectory(dir);
+                    link.SetIconLocation(icoPath, 0);
+                    link.SetDescription("FerrisPulse · 灵脉 外设电量感知引擎");
+
+                    IPropertyStore store = (IPropertyStore)link;
+                    PROPERTYKEY key = new PROPERTYKEY();
+                    key.fmtid = new Guid("{9F4C2855-9F79-4BDE-A8E1-E1DE34EB1AE8}");
+                    key.pid = 5;
+
+                    PROPVARIANT pv = new PROPVARIANT();
+                    pv.vt = 31; // VT_LPWSTR
+                    pv.pwszVal = Marshal.StringToCoTaskMemUni(AppUserModelId);
+                    try
+                    {
+                        store.SetValue(ref key, ref pv);
+                        store.Commit();
+                    }
+                    finally
+                    {
+                        Marshal.FreeCoTaskMem(pv.pwszVal);
+                    }
+
+                    IPersistFile file = (IPersistFile)link;
+                    file.Save(lnkPath, true);
+
+                    // 不在用户桌面创建任何快捷方式，保持用户桌面纯净无侵扰（Toast 通知仅需开始菜单 AUMID 链接）
+
+                    try { NativeMethods.SHChangeNotify(0x7FFFFFFF, 0x1000, IntPtr.Zero, IntPtr.Zero); } catch { }
                 }
-
-                IShellLinkW link = (IShellLinkW)new ShellLink();
-                link.SetPath(targetExe);
-                link.SetWorkingDirectory(dir);
-                link.SetIconLocation(icoPath, 0);
-                link.SetDescription("FerrisPulse · 灵脉 外设电量感知引擎");
-
-                IPropertyStore store = (IPropertyStore)link;
-                PROPERTYKEY key = new PROPERTYKEY();
-                key.fmtid = new Guid("{9F4C2855-9F79-4BDE-A8E1-E1DE34EB1AE8}");
-                key.pid = 5;
-
-                PROPVARIANT pv = new PROPVARIANT();
-                pv.vt = 31; // VT_LPWSTR
-                pv.pwszVal = Marshal.StringToCoTaskMemUni(AppUserModelId);
-                try
-                {
-                    store.SetValue(ref key, ref pv);
-                    store.Commit();
-                }
-                finally
-                {
-                    Marshal.FreeCoTaskMem(pv.pwszVal);
-                }
-
-                IPersistFile file = (IPersistFile)link;
-                file.Save(lnkPath, true);
-
-                // 不在用户桌面创建任何快捷方式，保持用户桌面纯净无侵扰（Toast 通知仅需开始菜单 AUMID 链接）
-
-                try { NativeMethods.SHChangeNotify(0x7FFFFFFF, 0x1000, IntPtr.Zero, IntPtr.Zero); } catch { }
 
                 // 注册 HKCU 提示信息保证通知中心标题与图标呈现
                 try
@@ -294,23 +303,14 @@ namespace RazerBatteryTray
         }
 
         /// <summary>
-        /// 首次运行策略：若当前非开机自启动且尚未初始化过桌面快捷方式，则创建一次并标记已初始化。
-        /// 若用户后续手动删除桌面图标，则判定为用户偏好，绝不死灰复燃。
+        /// 首次运行策略：严格遵从绿色便携零侵扰原则，绝不在桌面自动创建快捷方式。
+        /// 桌面快捷方式 100% 由用户在托盘右键菜单中主动触发创建。
+        /// 本方法已废弃并置为安全空操作，保留此签名以维持二进制反射与外部调用契约兼容。
         /// </summary>
+        [Obsolete("遵从绿色便携零侵扰原则，桌面快捷方式仅允许用户在托盘手动创建")]
         public static void EnsureDesktopShortcutFirstRun(bool isAutoStart)
         {
-            if (isAutoStart) return;
-
-            try
-            {
-                bool initialized = ConfigManager.GetBool(ConfigManager.DesktopShortcutInitialized, false);
-                if (!initialized)
-                {
-                    CreateDesktopShortcut(false);
-                    ConfigManager.SetBool(ConfigManager.DesktopShortcutInitialized, true);
-                }
-            }
-            catch { }
+            // 严格空操作，杜绝任何静默向桌面写文件行为
         }
 
         /// <summary>
@@ -333,6 +333,10 @@ namespace RazerBatteryTray
                     targetExe.IndexOf("cmd.exe", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     string fallback = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FerrisPulse.exe");
+                    if (!File.Exists(fallback))
+                    {
+                        fallback = Path.Combine(Directory.GetCurrentDirectory(), "FerrisPulse.exe");
+                    }
                     if (File.Exists(fallback))
                     {
                         targetExe = fallback;

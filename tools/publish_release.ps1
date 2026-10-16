@@ -103,6 +103,7 @@ if ($Changelog.Count -gt 0) {
 }
 
 $updatedJson = $vObj | ConvertTo-Json -Depth 5
+$updatedJson = $updatedJson.Replace("\u0026", "&")
 [System.IO.File]::WriteAllText($versionJsonPath, $updatedJson, $utf8WithBom)
 
 # 6. 生成便携版压缩包
@@ -166,6 +167,17 @@ try {
 }
 
 if ($ghReleaseId) {
+    # 检查并删除已存在的同名资产（防止 422 拒绝覆盖导致校验失败）
+    try {
+        $existingAssets = Invoke-RestMethod -Uri "https://api.github.com/repos/$ghRepo/releases/$ghReleaseId/assets" -Headers $ghHeaders
+        foreach ($ea in $existingAssets) {
+            if ($ea.name -eq "FerrisPulse.exe" -or $ea.name -eq "FerrisPulse_${tag}_Portable.zip") {
+                Write-Host "  -> [GitHub] 删除旧版本资产: $($ea.name) (ID: $($ea.id))..." -ForegroundColor DarkGray
+                Invoke-RestMethod -Uri "https://api.github.com/repos/$ghRepo/releases/assets/$($ea.id)" -Method Delete -Headers $ghHeaders | Out-Null
+            }
+        }
+    } catch { }
+
     Write-Host "  -> [GitHub] 上传 FerrisPulse.exe..." -ForegroundColor Cyan
     & curl.exe -s -X POST "https://uploads.github.com/repos/$ghRepo/releases/$ghReleaseId/assets?name=FerrisPulse.exe" -H "Authorization: Bearer $ghToken" -H "Content-Type: application/octet-stream" --data-binary "@$exePath" | Out-Null
     
@@ -204,6 +216,19 @@ if (-not $giteeReleaseId) {
 }
 
 if ($giteeReleaseId) {
+    # 检查并删除 Gitee 已存在的同名资产
+    try {
+        $giteeRelInfo = Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/$giteeRepo/releases/$giteeReleaseId?access_token=$giteeToken" -UserAgent "FerrisPulse-Release"
+        foreach ($ga in $giteeRelInfo.assets) {
+            if ($ga.name -eq "FerrisPulse.exe" -or $ga.name -eq "FerrisPulse_${tag}_Portable.zip") {
+                Write-Host "  -> [Gitee] 删除旧版本资产: $($ga.name)..." -ForegroundColor DarkGray
+                try {
+                    Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/$giteeRepo/releases/$giteeReleaseId/attach_files/$($ga.id)?access_token=$giteeToken" -Method Delete -UserAgent "FerrisPulse-Release" | Out-Null
+                } catch { }
+            }
+        }
+    } catch { }
+
     Write-Host "  -> [Gitee] 上传 FerrisPulse.exe..." -ForegroundColor Cyan
     & curl.exe -s -X POST "https://gitee.com/api/v5/repos/$giteeRepo/releases/$giteeReleaseId/attach_files" -F "access_token=$giteeToken" -F "file=@$exePath" | Out-Null
     

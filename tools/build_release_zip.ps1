@@ -1,7 +1,9 @@
 ﻿# build_release_zip.ps1
-# 自动化发布打包脚本（产物已被 .gitignore 忽略，仅供 GitHub Releases 附件上传）
+# 自动化发布打包脚本（产物已被 .gitignore 忽略，仅供 GitHub/Gitee Releases 附件上传）
+param([string]$Version = "2.0.0")
 $rootDir = (Resolve-Path "$PSScriptRoot\..").Path
-$zipPath = Join-Path $rootDir "FerrisPulse_v2.0_Portable.zip"
+$cleanVer = $Version.TrimStart('v', 'V')
+$zipPath = Join-Path $rootDir "FerrisPulse_v${cleanVer}_Portable.zip"
 
 if (Test-Path $zipPath) {
     Remove-Item $zipPath -Force

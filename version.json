@@ -1,16 +1,13 @@
-{
-  "latestVersion": "2.0.0",
-  "releaseDate": "2026-10-12",
-  "minSupportedVersion": "1.0.0",
-  "downloadUrl": "https://gitee.com/Ferris-echo/ferris-pulse/raw/main/FerrisPulse.exe",
-  "sha256": "adad3c55454f6626789cbfc55d1931d37dc99fd7ef93a6b1629c79b46568830b",
-  "fileSize": 663040,
-
-  "changelog": [
-    "【外设支持】扩展支持罗技、雷柏、NuPhy 及主流国产品牌外设，支持蓝牙耳机电量显示",
-    "【游戏调度】支持全屏游戏自动切换高回报率与游戏进程守护，配备无感 OSD 与提示音",
-    "【按键测速】内置独占全键无冲测速仪 (NKRO)，毫秒级统计击键并发与延迟",
-    "【自动更新】新增在线检查更新与无感热替换，发现新版一键自动升级",
-    "【原生美学】Win11 深度暗黑质感，三大托盘图标风格，支持设备自定义改名"
-  ]
+﻿{
+    "latestVersion":  "2.0.1",
+    "releaseDate":  "2026-10-17",
+    "minSupportedVersion":  "1.0.0",
+    "downloadUrl":  "https://github.com/Ferris-echo/FerrisPulse/releases/download/v2.0.1/FerrisPulse.exe",
+    "sha256":  "4544954002ba7f25dcd027e7fe89e78c45624625a81c4cfcba1f9ea6406c4c5d",
+    "fileSize":  663040,
+    "changelog":  [
+                      "【快捷方式】彻底修复每次启动都会在桌面自动创建快捷方式的问题，桌面图标严格改为托盘菜单手动创建",
+                      "【外设识别】新增雷蛇毒蝰 V3 Pro 竞技版 (Viper V3 Pro SE) 接收器与有线模式双模识别与 Focus Pro 35K 原生 DPI 档位适配",
+                      "【更新分发】规范仓库架构并移除代码库中大二进制文件，全面接入 GitHub \u0026 Gitee Releases 双平台自动化分发与 CDN 镜像加速"
+                  ]
 }

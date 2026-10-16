@@ -194,6 +194,7 @@ if (-not $giteeReleaseId) {
         tag_name = $tag
         name = $Title
         body = $releaseBody
+        target_commitish = "main"
     }
     $newGiteeRel = Invoke-RestMethod -Uri $giteeCreateUri -Method Post -Body $giteeParams -UserAgent "FerrisPulse-Release"
     $giteeReleaseId = $newGiteeRel.id

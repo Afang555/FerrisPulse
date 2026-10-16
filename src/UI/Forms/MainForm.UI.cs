@@ -816,11 +816,12 @@ namespace RazerBatteryTray
             lblStyleTitle.Size = new Size(lblTitleW, (int)(22 * dpiScale));
             cardSettings.Controls.Add(lblStyleTitle);
 
-            int seg1W = (secW - lblTitleW - (int)(8 * dpiScale)) / 2;
+            int seg1Gap = (int)(6 * dpiScale);
+            int seg1W = (secW - lblTitleW - (seg1Gap * 2)) / 3;
             int seg1X = cPad + lblTitleW;
 
             btnStyleCapsule = new ModernSegmentButton();
-            btnStyleCapsule.Text = "现代胶囊电池";
+            btnStyleCapsule.Text = "胶囊电池";
             btnStyleCapsule.Font = new Font("Microsoft YaHei UI", 8.8F, FontStyle.Regular, GraphicsUnit.Point);
             btnStyleCapsule.Location = new Point(seg1X, row1Y);
             btnStyleCapsule.Size = new Size(seg1W, segH);
@@ -828,12 +829,20 @@ namespace RazerBatteryTray
             cardSettings.Controls.Add(btnStyleCapsule);
 
             btnStyleNum = new ModernSegmentButton();
-            btnStyleNum.Text = "醒目数字能量表";
+            btnStyleNum.Text = "数字能量";
             btnStyleNum.Font = new Font("Microsoft YaHei UI", 8.8F, FontStyle.Regular, GraphicsUnit.Point);
-            btnStyleNum.Location = new Point(seg1X + seg1W + (int)(8 * dpiScale), row1Y);
+            btnStyleNum.Location = new Point(seg1X + seg1W + seg1Gap, row1Y);
             btnStyleNum.Size = new Size(seg1W, segH);
             btnStyleNum.Click += (s, e) => SetTrayStyle(1, false);
             cardSettings.Controls.Add(btnStyleNum);
+
+            btnStylePureNum = new ModernSegmentButton();
+            btnStylePureNum.Text = "极简纯数字";
+            btnStylePureNum.Font = new Font("Microsoft YaHei UI", 8.8F, FontStyle.Regular, GraphicsUnit.Point);
+            btnStylePureNum.Location = new Point(seg1X + (seg1W + seg1Gap) * 2, row1Y);
+            btnStylePureNum.Size = new Size(seg1W, segH);
+            btnStylePureNum.Click += (s, e) => SetTrayStyle(2, false);
+            cardSettings.Controls.Add(btnStylePureNum);
 
             // Row 2: 自动刷新频率 (30s / 1m / 5m)
             int row2Y = (int)(76 * dpiScale);

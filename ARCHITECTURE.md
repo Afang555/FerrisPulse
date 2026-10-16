@@ -108,7 +108,7 @@ D:\FerrisPulse · 灵脉\
 | **多设备优先级拖拽与首选设备** | `src/Hardware/DeviceManager.cs` / `DevicePriorityForm.cs` | 外设优先级权重与展示顺序 |
 | **全屏游戏自动切换回报率** | `src/Services/GameDetector.cs` / `MainForm.Hardware.cs` | 前台独占全屏与游戏进程监听 |
 | **游戏切换提示音 (PCM 双音)** | `src/Services/ChimeSynthesizer.cs` | 44.1kHz 纯正弦波双音合成 |
-| **托盘右键菜单项与动态设备切换** | `src/UI/Forms/MainForm.Tray.cs` | 托盘菜单排布与多外设快捷切换 |
+| **托盘图标样式与动态设备右键菜单** | `src/UI/Forms/MainForm.Tray.cs` | 托盘样式渲染 (0: 现代胶囊电池, 1: 醒目数字能量表, 2: 极简纯数字) 与全新 Fluent 断联图标、多外设快捷切换 |
 | **全键无冲测速仪 / 键盘按键监控** | `src/UI/Forms/KeyRolloverSpeedForm.cs` | 底层键盘钩子与高帧率矩阵点亮 |
 | **主界面暗黑卡片风格 / 矢量闪电** | `src/UI/Theme/ModernThemeHelper.cs` | 统一颜色色板与纯矢量图标绘制 |
 | **按钮、滑块、分段选项卡外观** | `src/UI/Controls/*.cs` | 独立的原子自定义双缓冲 GDI+ 控件 |

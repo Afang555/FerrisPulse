@@ -440,9 +440,31 @@ namespace RazerBatteryTray
             {
                 if (!File.Exists(updateFilePath)) return false;
 
-                int currentPid = Process.GetCurrentProcess().Id;
                 string exePath = Application.ExecutablePath;
+                string oldExe = exePath + ".old";
 
+                // 核心安全优化：优先采用 Windows 原生运行时重命名机制 (In-Process Native Rename)
+                // 在 Windows NTFS 下，运行中的 exe 支持直接重命名（MoveFile），随后将新 exe 移入原路径并拉起。
+                // 全程为纯 C# 托管操作，不启动任何隐藏 powershell/cmd 脚本，彻底杜绝 AMSI 与 Dropper 杀软误报！
+                try
+                {
+                    if (File.Exists(oldExe))
+                    {
+                        try { File.Delete(oldExe); } catch { }
+                    }
+                    File.Move(exePath, oldExe);
+                    File.Move(updateFilePath, exePath);
+
+                    Process.Start(exePath, "--updated");
+                    Application.Exit();
+                    return true;
+                }
+                catch
+                {
+                    // 若受非 NTFS 文件系统等特殊环境限制，进入兼容降级分支
+                }
+
+                int currentPid = Process.GetCurrentProcess().Id;
                 string args = BuildSelfReplaceCommand(currentPid, exePath, updateFilePath);
 
                 ProcessStartInfo psi = new ProcessStartInfo();

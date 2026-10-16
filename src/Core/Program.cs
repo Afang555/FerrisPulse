@@ -44,6 +44,17 @@ namespace RazerBatteryTray
             }
             catch { }
 
+            // 1.1 静默清理自更新残留的旧版本备份 (.old)
+            try
+            {
+                string oldBackup = Application.ExecutablePath + ".old";
+                if (File.Exists(oldBackup))
+                {
+                    File.Delete(oldBackup);
+                }
+            }
+            catch { }
+
             // 2. 声明系统物理级 High-DPI 感知
             try
             {

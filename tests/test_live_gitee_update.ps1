@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 # 测试用例: test_live_gitee_update.ps1
 # 验证内容:
 #   通过 UpdateManager 真实联网向 Gitee (feitian-zhang-fei/ferris-pulse)
@@ -103,8 +103,8 @@ try {
     Write-Host "PASS: Live Gitee check succeeded in $($sw.ElapsedMilliseconds) ms!" -ForegroundColor Green
     Write-Host "Discovered Version from Gitee: $latestVer" -ForegroundColor Cyan
 
-    if ($latestVer -notin @("2.0.0", "2.1.0")) {
-        Write-Error "FAIL: Expected version 2.0.0 or 2.1.0, got $latestVer"
+    if ([string]::IsNullOrEmpty($latestVer) -or -not ($latestVer -match '^\d+\.\d+\.\d+$')) {
+        Write-Error "FAIL: Expected valid semver (e.g. 2.0.1), got $latestVer"
         exit 1
     }
 

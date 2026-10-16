@@ -274,24 +274,15 @@ namespace RazerBatteryTray
                 SetTrayStyle(0, true);
                 styleCapsuleItem.Checked = true;
                 styleNumItem.Checked = false;
-                stylePureNumItem.Checked = false;
             });
             styleNumItem = new ToolStripMenuItem("醒目数字能量表", null, (s, e) => {
                 SetTrayStyle(1, true);
                 styleCapsuleItem.Checked = false;
                 styleNumItem.Checked = true;
-                stylePureNumItem.Checked = false;
-            });
-            stylePureNumItem = new ToolStripMenuItem("极简纯数字", null, (s, e) => {
-                SetTrayStyle(2, true);
-                styleCapsuleItem.Checked = false;
-                styleNumItem.Checked = false;
-                stylePureNumItem.Checked = true;
             });
             styleCapsuleItem.Checked = (trayStyle == 0);
             styleNumItem.Checked = (trayStyle == 1);
-            stylePureNumItem.Checked = (trayStyle == 2);
-            styleMenu.DropDownItems.AddRange(new ToolStripItem[] { styleCapsuleItem, styleNumItem, stylePureNumItem });
+            styleMenu.DropDownItems.AddRange(new ToolStripItem[] { styleCapsuleItem, styleNumItem });
             contextMenu.Items.Add(styleMenu);
 
             osdStyleMenu = new ToolStripMenuItem("DPI 浮窗样式");

@@ -1,5 +1,10 @@
-﻿# tests\test_pure_numeric_and_disconnected_tray.ps1
-# 验证“极简纯数字”托盘样式功能、菜单命名契约与全新断联图标渲染
+﻿# ============================================================================
+# 测试用例: test_pure_numeric_and_disconnected_tray.ps1
+# 验证内容:
+#   1. 托盘图标样式子菜单契约：现代胶囊电池、醒目数字能量表
+#   2. SetTrayStyle(0/1) 切换联动与注册表持久化
+#   3. 断联托盘图标精致重绘（胶囊四角严密闭合无空隙、能量表双破折号水平垂直严格居中）
+# ============================================================================
 $ErrorActionPreference = "Stop"
 
 $asmPath = Join-Path $PSScriptRoot "..\FerrisPulse.exe"
@@ -39,65 +44,60 @@ if ($styleMenu -eq $null) {
 Write-Host "PASS: '托盘图标样式' menu found with $($styleMenu.DropDownItems.Count) items." -ForegroundColor Green
 
 # 验证子菜单项数量与名称
-if ($styleMenu.DropDownItems.Count -ne 3) {
-    Write-Host "FAIL: Expected 3 style items, but found $($styleMenu.DropDownItems.Count)" -ForegroundColor Red
+if ($styleMenu.DropDownItems.Count -ne 2) {
+    Write-Host "FAIL: Expected 2 style items, but found $($styleMenu.DropDownItems.Count)" -ForegroundColor Red
     exit 1
 }
 
-$pureNumItem = $styleMenu.DropDownItems[2]
-Write-Host "Checking pure numeric menu item text: '$($pureNumItem.Text)'"
-if ($pureNumItem.Text -ne "极简纯数字") {
-    Write-Host "FAIL: Pure numeric menu item must strictly be named '极简纯数字', but was '$($pureNumItem.Text)'!" -ForegroundColor Red
+$capsuleItem = $styleMenu.DropDownItems[0]
+$numItem = $styleMenu.DropDownItems[1]
+if ($capsuleItem.Text -ne "现代胶囊电池" -or $numItem.Text -ne "醒目数字能量表") {
+    Write-Host "FAIL: Style menu items text mismatch!" -ForegroundColor Red
     exit 1
 }
-if ($pureNumItem.Text -like "*风格*") {
-    Write-Host "FAIL: Pure numeric menu item text must NOT contain '风格'!" -ForegroundColor Red
-    exit 1
-}
-Write-Host "PASS: Pure numeric menu item text is strictly '极简纯数字'." -ForegroundColor Green
+Write-Host "PASS: Style menu items text: '现代胶囊电池' and '醒目数字能量表'." -ForegroundColor Green
 
-# 2. 验证 SetTrayStyle(2) 切换与联动
+# 2. 验证 SetTrayStyle(1) 切换与联动
 $mSetTrayStyle = $tMain.GetMethod("SetTrayStyle", [System.Reflection.BindingFlags]"NonPublic,Instance")
 if ($mSetTrayStyle -eq $null) {
     Write-Host "FAIL: Method SetTrayStyle not found!" -ForegroundColor Red
     exit 1
 }
 
-$mSetTrayStyle.Invoke($form, @([int]2, [bool]$false))
+$mSetTrayStyle.Invoke($form, @([int]1, [bool]$false))
 
 $fTrayStyle = $tMain.GetField("trayStyle", [System.Reflection.BindingFlags]"NonPublic,Instance")
 $currentStyle = $fTrayStyle.GetValue($form)
-if ($currentStyle -ne 2) {
-    Write-Host "FAIL: trayStyle after SetTrayStyle(2) was $currentStyle, expected 2!" -ForegroundColor Red
+if ($currentStyle -ne 1) {
+    Write-Host "FAIL: trayStyle after SetTrayStyle(1) was $currentStyle, expected 1!" -ForegroundColor Red
     exit 1
 }
-if (-not $pureNumItem.Checked) {
-    Write-Host "FAIL: pureNumItem.Checked is false after SetTrayStyle(2)!" -ForegroundColor Red
+if (-not $numItem.Checked) {
+    Write-Host "FAIL: numItem.Checked is false after SetTrayStyle(1)!" -ForegroundColor Red
     exit 1
 }
-Write-Host "PASS: SetTrayStyle(2) correctly sets trayStyle = 2 and checks pureNumItem." -ForegroundColor Green
+Write-Host "PASS: SetTrayStyle(1) correctly sets trayStyle = 1 and checks numItem." -ForegroundColor Green
 
 # 3. 验证注册表持久化与 LoadConfig
 $regKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("Software\FerrisPulse")
 if ($regKey -ne $null) {
     $savedStyle = $regKey.GetValue("TrayIconStyle")
     $regKey.Close()
-    if ($savedStyle -ne 2) {
-        Write-Host "FAIL: Registry TrayIconStyle was $savedStyle, expected 2!" -ForegroundColor Red
+    if ($savedStyle -ne 1) {
+        Write-Host "FAIL: Registry TrayIconStyle was $savedStyle, expected 1!" -ForegroundColor Red
         exit 1
     }
-    Write-Host "PASS: Registry correctly saved TrayIconStyle = 2." -ForegroundColor Green
+    Write-Host "PASS: Registry correctly saved TrayIconStyle = 1." -ForegroundColor Green
 }
 
-# 4. 验证 GDI+ 矢量渲染：DrawTrayBitmap 在全部 3 种样式下的 16x16 与 24x24 渲染
+# 4. 验证 GDI+ 矢量渲染：DrawTrayBitmap 在全部 2 种样式下的 16x16 与 24x24 渲染
 $mDraw = $tMain.GetMethod("DrawTrayBitmap", [System.Reflection.BindingFlags]"NonPublic,Static")
 if ($mDraw -eq $null) {
     Write-Host "FAIL: Method DrawTrayBitmap not found!" -ForegroundColor Red
     exit 1
 }
 
-# 测试用例：style in (0, 1, 2), iconSize in (16, 24), isConnected in ($true, $false), isCharging in ($true, $false)
-foreach ($style in @(0, 1, 2)) {
+foreach ($style in @(0, 1)) {
     foreach ($size in @(16, 24)) {
         # 1. 正常连接
         $bmpConnected = $mDraw.Invoke($null, @([int]85, [bool]$false, [bool]$true, [int]$style, [int]$size, [bool]$false, $null))
@@ -139,7 +139,7 @@ foreach ($style in @(0, 1, 2)) {
         $bmpDisconnected.Dispose()
     }
 }
-Write-Host "PASS: All 3 styles render clean 16x16 and 24x24 icons in connected, charging, and disconnected states." -ForegroundColor Green
+Write-Host "PASS: All styles render clean 16x16 and 24x24 icons in connected, charging, and disconnected states." -ForegroundColor Green
 
 # 清理资源
 $form.Dispose()

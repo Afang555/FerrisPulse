@@ -113,7 +113,6 @@ namespace RazerBatteryTray
         private ToolStripMenuItem dpiOsdMenuItem;
         private ToolStripMenuItem styleCapsuleItem;
         private ToolStripMenuItem styleNumItem;
-        private ToolStripMenuItem stylePureNumItem;
         private ToolStripMenuItem osdStyleMenu;
         private ToolStripMenuItem osdStyleCapsuleItem;
         private ToolStripMenuItem osdStyleGaugeItem;
@@ -295,7 +294,6 @@ namespace RazerBatteryTray
         private Label lblStyleTitle;
         private ModernSegmentButton btnStyleCapsule;
         private ModernSegmentButton btnStyleNum;
-        private ModernSegmentButton btnStylePureNum;
         private Label lblIntervalTitle;
         private ModernSegmentButton btnInt30s;
         private ModernSegmentButton btnInt1m;
@@ -656,7 +654,7 @@ namespace RazerBatteryTray
         private void SetTrayStyle(int style, bool showNotification = false)
         {
             trayStyle = style;
-            if (trayStyle < 0 || trayStyle > 2) trayStyle = 0;
+            if (trayStyle < 0 || trayStyle > 1) trayStyle = 0;
             SaveConfig();
 
             isUpdatingUI = true;
@@ -664,11 +662,9 @@ namespace RazerBatteryTray
             {
                 if (styleCapsuleItem != null) styleCapsuleItem.Checked = (trayStyle == 0);
                 if (styleNumItem != null) styleNumItem.Checked = (trayStyle == 1);
-                if (stylePureNumItem != null) stylePureNumItem.Checked = (trayStyle == 2);
 
                 if (btnStyleCapsule != null) btnStyleCapsule.Selected = (trayStyle == 0);
                 if (btnStyleNum != null) btnStyleNum.Selected = (trayStyle == 1);
-                if (btnStylePureNum != null) btnStylePureNum.Selected = (trayStyle == 2);
             }
             finally
             {
@@ -887,10 +883,8 @@ namespace RazerBatteryTray
 
                 if (styleCapsuleItem != null) styleCapsuleItem.Checked = (trayStyle == 0);
                 if (styleNumItem != null) styleNumItem.Checked = (trayStyle == 1);
-                if (stylePureNumItem != null) stylePureNumItem.Checked = (trayStyle == 2);
                 if (btnStyleCapsule != null) btnStyleCapsule.Selected = (trayStyle == 0);
                 if (btnStyleNum != null) btnStyleNum.Selected = (trayStyle == 1);
-                if (btnStylePureNum != null) btnStylePureNum.Selected = (trayStyle == 2);
 
                 if (osdForm != null) osdForm.OsdStyle = osdStyle;
                 if (osdStyleCapsuleItem != null) osdStyleCapsuleItem.Checked = (osdStyle == 0);

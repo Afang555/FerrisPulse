@@ -81,7 +81,7 @@ try {
     $versionProp = $runnerType.GetField("LatestVersion")
     $errorProp = $runnerType.GetField("Error")
 
-    while (-not $completedProp.GetValue($null) -and $sw.ElapsedMilliseconds -lt 12000) {
+    while (-not $completedProp.GetValue($null) -and $sw.ElapsedMilliseconds -lt 25000) {
         [System.Threading.Thread]::Sleep(100)
     }
 
@@ -91,7 +91,7 @@ try {
     $err = $errorProp.GetValue($null)
 
     if (-not $isCompleted) {
-        Write-Error "TIMEOUT: Gitee check did not complete within 12 seconds!"
+        Write-Error "TIMEOUT: Gitee check did not complete within 25 seconds!"
         exit 1
     }
 

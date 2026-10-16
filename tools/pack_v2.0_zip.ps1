@@ -1,13 +1,18 @@
 ﻿# ============================================================================
 # 脚本名称: pack_v2.0_zip.ps1
 # 所属区域: tools
-# 职责: 为 Gitee / GitHub v2.0.0 规范打包 FerrisPulse_v2.0_Portable.zip
+# 职责: 为 Gitee / GitHub Releases 规范打包 FerrisPulse_v{Version}_Portable.zip
 # ============================================================================
+
+param(
+    [string]$Version = "2.0.1"
+)
 
 $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $rootDir = (Get-Item "$scriptDir\..").FullName
 
+$cleanVer = $Version.TrimStart('v', 'V')
 $tempStage = Join-Path ([System.IO.Path]::GetTempPath()) ("FP_Pack_" + [System.Guid]::NewGuid().ToString("N"))
 if (Test-Path $tempStage) { Remove-Item $tempStage -Recurse -Force }
 New-Item -ItemType Directory -Path $tempStage | Out-Null
@@ -28,7 +33,7 @@ try {
         Copy-Item $faq (Join-Path $tempStage "使用说明与常见问题.txt")
     }
 
-    $zipPath = Join-Path $rootDir "FerrisPulse_v2.0_Portable.zip"
+    $zipPath = Join-Path $rootDir "FerrisPulse_v${cleanVer}_Portable.zip"
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem

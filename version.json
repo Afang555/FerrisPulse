@@ -3,8 +3,8 @@
     "releaseDate":  "2026-10-17",
     "minSupportedVersion":  "1.0.0",
     "downloadUrl":  "https://github.com/Ferris-echo/FerrisPulse/releases/download/v2.0.1/FerrisPulse.exe",
-    "sha256":  "c88af87dc6c57804f08bd641d7449e7e6c3d021e2487dede1692e3275a1b4089",
-    "fileSize":  663040,
+    "sha256":  "2e29be968b6d4550fe9296e64847e0207edfd8ad046cd4c9b2a28dc0c64d0eb6",
+    "fileSize":  690688,
     "changelog":  [
                       "【快捷方式】彻底修复每次启动都会在桌面自动创建快捷方式的问题，桌面图标严格改为托盘菜单手动创建",
                       "【外设识别】新增雷蛇毒蝰 V3 Pro 竞技版 (Viper V3 Pro SE) 接收器与有线模式双模识别与 Focus Pro 35K 原生 DPI 档位适配",

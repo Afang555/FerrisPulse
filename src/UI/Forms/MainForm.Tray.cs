@@ -712,25 +712,28 @@ namespace RazerBatteryTray
             new byte[] { 0x6, 0x9, 0x9, 0x7, 0x1, 0x1, 0x6 }, // 9
         };
 
-        private static readonly byte[] Digit0_3x7 = new byte[] {
-            0x7, 0x5, 0x5, 0x5, 0x5, 0x5, 0x7
+        // 5x10 Ultra-Bold Font (0-9): 10px tall, 2px thick strokes for maximum clarity & presence
+        private static readonly ushort[][] BoldDigits5x10 = new ushort[][] {
+            new ushort[] { 0x0E, 0x1F, 0x1B, 0x1B, 0x1B, 0x1B, 0x1B, 0x1B, 0x1F, 0x0E }, // 0
+            new ushort[] { 0x06, 0x07, 0x07, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03 }, // 1 (width 3, bold column)
+            new ushort[] { 0x0E, 0x1F, 0x13, 0x03, 0x06, 0x0C, 0x18, 0x18, 0x1F, 0x1F }, // 2
+            new ushort[] { 0x1E, 0x1F, 0x03, 0x03, 0x0E, 0x0E, 0x03, 0x03, 0x1F, 0x1E }, // 3
+            new ushort[] { 0x13, 0x13, 0x13, 0x13, 0x1F, 0x1F, 0x03, 0x03, 0x03, 0x03 }, // 4
+            new ushort[] { 0x1F, 0x1F, 0x18, 0x1E, 0x1F, 0x03, 0x03, 0x13, 0x1F, 0x0E }, // 5
+            new ushort[] { 0x0E, 0x1F, 0x18, 0x1E, 0x1F, 0x1B, 0x1B, 0x1B, 0x1F, 0x0E }, // 6
+            new ushort[] { 0x1F, 0x1F, 0x03, 0x03, 0x06, 0x06, 0x0C, 0x0C, 0x18, 0x18 }, // 7
+            new ushort[] { 0x0E, 0x1F, 0x1B, 0x1B, 0x0E, 0x0E, 0x1B, 0x1B, 0x1F, 0x0E }, // 8
+            new ushort[] { 0x0E, 0x1F, 0x1B, 0x1B, 0x1F, 0x0F, 0x03, 0x03, 0x1F, 0x0E }, // 9
         };
 
-        private static readonly byte[] Digit1_2x7 = new byte[] {
-            0x1, 0x3, 0x1, 0x1, 0x1, 0x1, 0x1
+        // Compact 4x10 '0' for 100% display
+        private static readonly ushort[] BoldDigit0_4x10 = new ushort[] {
+            0x06, 0x0F, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x0F, 0x06
         };
 
-        private static readonly ushort[][] Digits6x11 = new ushort[][] {
-            new ushort[] { 0x1E, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x1E }, // 0
-            new ushort[] { 0x0C, 0x1C, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x3F }, // 1 (4 wide)
-            new ushort[] { 0x1E, 0x33, 0x03, 0x03, 0x06, 0x0C, 0x18, 0x30, 0x30, 0x33, 0x3F }, // 2
-            new ushort[] { 0x3E, 0x03, 0x03, 0x03, 0x1E, 0x03, 0x03, 0x03, 0x03, 0x33, 0x1E }, // 3
-            new ushort[] { 0x33, 0x33, 0x33, 0x33, 0x3F, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03 }, // 4
-            new ushort[] { 0x3F, 0x30, 0x30, 0x30, 0x3E, 0x03, 0x03, 0x03, 0x03, 0x33, 0x1E }, // 5
-            new ushort[] { 0x1E, 0x33, 0x30, 0x30, 0x3E, 0x33, 0x33, 0x33, 0x33, 0x33, 0x1E }, // 6
-            new ushort[] { 0x3F, 0x03, 0x06, 0x06, 0x0C, 0x0C, 0x18, 0x18, 0x18, 0x18, 0x18 }, // 7
-            new ushort[] { 0x1E, 0x33, 0x33, 0x33, 0x1E, 0x33, 0x33, 0x33, 0x33, 0x33, 0x1E }, // 8
-            new ushort[] { 0x1E, 0x33, 0x33, 0x33, 0x33, 0x1F, 0x03, 0x03, 0x03, 0x33, 0x1E }, // 9
+        // Compact 2x10 '1' for 100% display
+        private static readonly ushort[] BoldDigit1_2x10 = new ushort[] {
+            0x02, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03
         };
 
 
@@ -757,22 +760,26 @@ namespace RazerBatteryTray
                     if (style == 2) // 极简纯数字: 居中双破折号
                     {
                         Color disCol = Color.FromArgb(160, 172, 192);
-                        for (int x = 6; x <= 9; x++) { bmp.SetPixel(x, 11, disCol); bmp.SetPixel(x, 12, disCol); }
-                        for (int x = 14; x <= 17; x++) { bmp.SetPixel(x, 11, disCol); bmp.SetPixel(x, 12, disCol); }
+                        int y = 11;
+                        for (int x = 6; x <= 9; x++) { bmp.SetPixel(x, y, disCol); bmp.SetPixel(x, y + 1, disCol); }
+                        for (int x = 14; x <= 17; x++) { bmp.SetPixel(x, y, disCol); bmp.SetPixel(x, y + 1, disCol); }
                         return bmp;
                     }
-                    else if (style == 1) // 醒目数字能量表
+                    else if (style == 1) // 醒目数字能量表: 严格水平垂直绝对居中
                     {
                         using (SolidBrush bg = new SolidBrush(Color.FromArgb(20, 23, 30)))
                             g.FillRectangle(bg, 0, 0, 24, 24);
                         using (Pen border = new Pen(Color.FromArgb(48, 56, 74), 1f))
                             g.DrawRectangle(border, 0, 0, 23, 23);
-                        DrawDigits24(bmp, -1, 11, 5, Color.FromArgb(160, 172, 192), false);
+                        Color slateDash = Color.FromArgb(170, 180, 198);
+                        int dy = 8;
+                        for (int x = 7; x <= 10; x++) { bmp.SetPixel(x, dy, slateDash); bmp.SetPixel(x, dy + 1, slateDash); }
+                        for (int x = 13; x <= 16; x++) { bmp.SetPixel(x, dy, slateDash); bmp.SetPixel(x, dy + 1, slateDash); }
                         using (SolidBrush barB = new SolidBrush(Color.FromArgb(40, 48, 62)))
                             g.FillRectangle(barB, 3, 17, 18, 4);
                         return bmp;
                     }
-                    else // 现代胶囊电池 (Default)
+                    else // 现代胶囊电池: 四角闭合完全连贯密封，无空隙
                     {
                         Color slateBorder = Color.FromArgb(140, 150, 168);
                         Color slateDash = Color.FromArgb(170, 180, 198);
@@ -780,16 +787,15 @@ namespace RazerBatteryTray
                             g.FillRectangle(bg, 2, 4, 18, 16);
                         using (Pen p = new Pen(slateBorder, 1f))
                         {
-                            g.DrawLine(p, 3, 3, 18, 3);
-                            g.DrawLine(p, 3, 20, 18, 20);
-                            g.DrawLine(p, 1, 5, 1, 18);
-                            g.DrawLine(p, 20, 5, 20, 18);
+                            g.DrawLine(p, 2, 3, 19, 3);
+                            g.DrawLine(p, 2, 20, 19, 20);
+                            g.DrawLine(p, 1, 4, 1, 19);
+                            g.DrawLine(p, 20, 4, 20, 19);
                         }
-                        Color cornerTone = Color.FromArgb(90, 140, 150, 168);
-                        bmp.SetPixel(2, 3, cornerTone); bmp.SetPixel(1, 4, cornerTone);
-                        bmp.SetPixel(2, 20, cornerTone); bmp.SetPixel(1, 19, cornerTone);
-                        bmp.SetPixel(19, 3, cornerTone); bmp.SetPixel(20, 4, cornerTone);
-                        bmp.SetPixel(19, 20, cornerTone); bmp.SetPixel(20, 19, cornerTone);
+                        bmp.SetPixel(1, 3, slateBorder);
+                        bmp.SetPixel(1, 20, slateBorder);
+                        bmp.SetPixel(20, 3, slateBorder);
+                        bmp.SetPixel(20, 20, slateBorder);
                         using (SolidBrush cap = new SolidBrush(slateBorder))
                             g.FillRectangle(cap, 21, 8, 2, 8);
                         for (int x = 6; x <= 8; x++) { bmp.SetPixel(x, 11, slateDash); bmp.SetPixel(x, 12, slateDash); }
@@ -871,22 +877,26 @@ namespace RazerBatteryTray
                     if (style == 2) // 极简纯数字: 居中双破折号
                     {
                         Color disCol = Color.FromArgb(160, 172, 192);
-                        for (int x = 4; x <= 6; x++) { bmp.SetPixel(x, 7, disCol); bmp.SetPixel(x, 8, disCol); }
-                        for (int x = 9; x <= 11; x++) { bmp.SetPixel(x, 7, disCol); bmp.SetPixel(x, 8, disCol); }
+                        int y = 7;
+                        for (int x = 4; x <= 6; x++) { bmp.SetPixel(x, y, disCol); bmp.SetPixel(x, y + 1, disCol); }
+                        for (int x = 9; x <= 11; x++) { bmp.SetPixel(x, y, disCol); bmp.SetPixel(x, y + 1, disCol); }
                         return bmp;
                     }
-                    else if (style == 1) // 醒目数字能量表
+                    else if (style == 1) // 醒目数字能量表: 严格水平垂直绝对居中
                     {
                         using (SolidBrush bg = new SolidBrush(Color.FromArgb(20, 23, 30)))
                             g.FillRectangle(bg, 0, 0, 16, 16);
                         using (Pen border = new Pen(Color.FromArgb(48, 56, 74), 1f))
                             g.DrawRectangle(border, 0, 0, 15, 15);
-                        DrawDigits16(bmp, -1, 7, 3, Color.FromArgb(160, 172, 192), false);
+                        Color slateDash = Color.FromArgb(170, 180, 198);
+                        int dy = 5;
+                        for (int x = 4; x <= 6; x++) { bmp.SetPixel(x, dy, slateDash); bmp.SetPixel(x, dy + 1, slateDash); }
+                        for (int x = 9; x <= 11; x++) { bmp.SetPixel(x, dy, slateDash); bmp.SetPixel(x, dy + 1, slateDash); }
                         using (SolidBrush barB = new SolidBrush(Color.FromArgb(40, 48, 62)))
                             g.FillRectangle(barB, 2, 12, 12, 3);
                         return bmp;
                     }
-                    else // 现代胶囊电池 (Default)
+                    else // 现代胶囊电池: 四角闭合完全连贯密封，无空隙
                     {
                         Color slateBorder = Color.FromArgb(140, 150, 168);
                         Color slateDash = Color.FromArgb(170, 180, 198);
@@ -894,16 +904,15 @@ namespace RazerBatteryTray
                             g.FillRectangle(bg, 1, 3, 12, 10);
                         using (Pen p = new Pen(slateBorder, 1f))
                         {
-                            g.DrawLine(p, 2, 2, 11, 2);
-                            g.DrawLine(p, 2, 13, 11, 13);
-                            g.DrawLine(p, 0, 4, 0, 11);
-                            g.DrawLine(p, 13, 4, 13, 11);
+                            g.DrawLine(p, 1, 2, 12, 2);
+                            g.DrawLine(p, 1, 13, 12, 13);
+                            g.DrawLine(p, 0, 3, 0, 12);
+                            g.DrawLine(p, 13, 3, 13, 12);
                         }
-                        Color cornerTone = Color.FromArgb(90, 140, 150, 168);
-                        bmp.SetPixel(1, 2, cornerTone); bmp.SetPixel(0, 3, cornerTone);
-                        bmp.SetPixel(1, 13, cornerTone); bmp.SetPixel(0, 12, cornerTone);
-                        bmp.SetPixel(12, 2, cornerTone); bmp.SetPixel(13, 3, cornerTone);
-                        bmp.SetPixel(12, 13, cornerTone); bmp.SetPixel(13, 12, cornerTone);
+                        bmp.SetPixel(0, 2, slateBorder);
+                        bmp.SetPixel(0, 13, slateBorder);
+                        bmp.SetPixel(13, 2, slateBorder);
+                        bmp.SetPixel(13, 13, slateBorder);
                         using (SolidBrush cap = new SolidBrush(slateBorder))
                             g.FillRectangle(cap, 14, 5, 2, 6);
                         for (int x = 4; x <= 5; x++) { bmp.SetPixel(x, 7, slateDash); bmp.SetPixel(x, 8, slateDash); }
@@ -1079,70 +1088,76 @@ namespace RazerBatteryTray
 
         private static void DrawPureNumericTrayBitmap24(Bitmap bmp, int percent, bool isCharging, Color color)
         {
-            int val = Math.Max(0, Math.Min(100, percent));
-            int centerX = isCharging ? 9 : 12;
-            int startY = 6;
-
-            if (val == 100)
+            if (percent < 0)
             {
-                DrawDigits24(bmp, 100, isCharging ? 9 : 12, 8, color, false);
+                Color dashCol = color;
+                int y = 11;
+                for (int x = 6; x <= 9; x++) { bmp.SetPixel(x, y, dashCol); bmp.SetPixel(x, y + 1, dashCol); }
+                for (int x = 14; x <= 17; x++) { bmp.SetPixel(x, y, dashCol); bmp.SetPixel(x, y + 1, dashCol); }
+                return;
             }
-            else
-            {
-                string s = val.ToString();
-                int totalW = 0;
-                int[] widths = new int[s.Length];
-                for (int i = 0; i < s.Length; i++)
-                {
-                    int d = s[i] - '0';
-                    int w = (d == 1) ? 4 : 6;
-                    widths[i] = w;
-                    totalW += w;
-                }
-                totalW += (s.Length - 1) * 2;
-                int curX = centerX - (totalW / 2);
 
-                for (int i = 0; i < s.Length; i++)
+            int val = Math.Max(0, Math.Min(100, percent));
+            int fontH = 14;
+            int startY = (24 - fontH) / 2;
+
+            string s = val.ToString();
+            int totalW = 0;
+            int[] widths = new int[s.Length];
+            for (int i = 0; i < s.Length; i++)
+            {
+                int d = s[i] - '0';
+                int w = (d == 1) ? 5 : 7;
+                if (val == 100)
                 {
-                    int d = s[i] - '0';
-                    int w = widths[i];
-                    ushort[] rows = Digits6x11[d];
-                    for (int r = 0; r < 11; r++)
+                    w = (i == 0) ? 3 : 6;
+                }
+                widths[i] = w;
+                totalW += w;
+            }
+            totalW += (s.Length - 1) * 2;
+            int curX = (24 - totalW) / 2;
+            if (isCharging) curX = Math.Max(1, curX - 3);
+
+            for (int i = 0; i < s.Length; i++)
+            {
+                int d = s[i] - '0';
+                int w = widths[i];
+                ushort[] srcRows = (val == 100) ? ((i == 0) ? BoldDigit1_2x10 : BoldDigit0_4x10) : BoldDigits5x10[d];
+                int srcW = (val == 100) ? ((i == 0) ? 2 : 4) : ((d == 1) ? 3 : 5);
+
+                for (int r = 0; r < fontH; r++)
+                {
+                    int srcR = (r * 10) / fontH;
+                    ushort row = srcRows[srcR];
+                    for (int c = 0; c < w; c++)
                     {
-                        ushort row = rows[r];
-                        for (int c = 0; c < w; c++)
+                        int srcC = (c * srcW) / w;
+                        int bit = (srcW - 1) - srcC;
+                        if ((row & (1 << bit)) != 0)
                         {
-                            int bit = (w == 4) ? (3 - c) : (5 - c);
-                            if ((row & (1 << bit)) != 0)
-                            {
-                                int px = curX + c;
-                                int py = startY + r;
-                                if (px >= 0 && px < bmp.Width && py >= 0 && py < bmp.Height)
-                                    bmp.SetPixel(px, py, color);
-                            }
+                            int px = curX + c;
+                            int py = startY + r;
+                            if (px >= 0 && px < 24 && py >= 0 && py < 24)
+                                bmp.SetPixel(px, py, color);
                         }
                     }
-                    curX += w + 2;
                 }
+                curX += w + 2;
             }
 
             if (isCharging)
             {
                 Color boltCol = Color.FromArgb(255, 235, 59);
-                DrawBolt24Badge(bmp, 18, 2, boltCol);
-            }
-        }
-
-        private static void DrawBolt24Badge(Bitmap bmp, int cx, int cy, Color color)
-        {
-            Point[] pts = new Point[] {
-                new Point(cx + 2, cy + 0), new Point(cx + 0, cy + 4), new Point(cx + 2, cy + 4),
-                new Point(cx + 1, cy + 8), new Point(cx + 4, cy + 3), new Point(cx + 2, cy + 3)
-            };
-            using (Graphics g = Graphics.FromImage(bmp))
-            using (SolidBrush b = new SolidBrush(color))
-            {
-                g.FillPolygon(b, pts);
+                Point[] pts = new Point[] {
+                    new Point(20, 1), new Point(17, 6), new Point(20, 6),
+                    new Point(18, 11), new Point(23, 5), new Point(20, 5)
+                };
+                using (Graphics g = Graphics.FromImage(bmp))
+                using (SolidBrush b = new SolidBrush(boltCol))
+                {
+                    g.FillPolygon(b, pts);
+                }
             }
         }
 
@@ -1245,63 +1260,98 @@ namespace RazerBatteryTray
 
         private static void DrawPureNumericTrayBitmap16(Bitmap bmp, int percent, bool isCharging, Color color)
         {
+            if (percent < 0)
+            {
+                Color dashCol = color;
+                int y = 7;
+                for (int x = 4; x <= 6; x++) { bmp.SetPixel(x, y, dashCol); bmp.SetPixel(x, y + 1, dashCol); }
+                for (int x = 9; x <= 11; x++) { bmp.SetPixel(x, y, dashCol); bmp.SetPixel(x, y + 1, dashCol); }
+                return;
+            }
+
             int val = Math.Max(0, Math.Min(100, percent));
+            int startY = 3;
+
             if (val == 100)
             {
-                int curX = 3;
-                int startY = 4;
-                for (int r = 0; r < 7; r++)
+                int curX = isCharging ? 1 : 2;
+                for (int r = 0; r < 10; r++)
                 {
-                    byte row = Digit1_2x7[r];
+                    ushort row = BoldDigit1_2x10[r];
                     if ((row & 2) != 0) bmp.SetPixel(curX, startY + r, color);
                     if ((row & 1) != 0) bmp.SetPixel(curX + 1, startY + r, color);
                 }
                 curX += 3;
-                for (int r = 0; r < 7; r++)
+                for (int r = 0; r < 10; r++)
                 {
-                    byte row = Digit0_3x7[r];
-                    for (int c = 0; c < 3; c++)
+                    ushort row = BoldDigit0_4x10[r];
+                    for (int c = 0; c < 4; c++)
                     {
-                        if ((row & (1 << (2 - c))) != 0) bmp.SetPixel(curX + c, startY + r, color);
+                        if ((row & (1 << (3 - c))) != 0)
+                            bmp.SetPixel(curX + c, startY + r, color);
                     }
                 }
-                curX += 4;
-                for (int r = 0; r < 7; r++)
+                curX += 5;
+                for (int r = 0; r < 10; r++)
                 {
-                    byte row = Digit0_3x7[r];
-                    for (int c = 0; c < 3; c++)
+                    ushort row = BoldDigit0_4x10[r];
+                    for (int c = 0; c < 4; c++)
                     {
-                        if ((row & (1 << (2 - c))) != 0) bmp.SetPixel(curX + c, startY + r, color);
+                        if ((row & (1 << (3 - c))) != 0)
+                            bmp.SetPixel(curX + c, startY + r, color);
                     }
                 }
             }
             else
             {
-                int centerX = isCharging ? 6 : 8;
-                int startY = 4;
-                DrawDigits24(bmp, val, centerX, startY, color, false);
+                string s = val.ToString();
+                int totalW = 0;
+                int[] widths = new int[s.Length];
+                for (int i = 0; i < s.Length; i++)
+                {
+                    int d = s[i] - '0';
+                    int w = (d == 1) ? 3 : 5;
+                    widths[i] = w;
+                    totalW += w;
+                }
+                totalW += (s.Length - 1);
+                int curX = (16 - totalW) / 2;
+                if (isCharging) curX = Math.Max(1, curX - 2);
+
+                for (int i = 0; i < s.Length; i++)
+                {
+                    int d = s[i] - '0';
+                    int w = widths[i];
+                    ushort[] rows = BoldDigits5x10[d];
+                    for (int r = 0; r < 10; r++)
+                    {
+                        ushort row = rows[r];
+                        for (int c = 0; c < w; c++)
+                        {
+                            int bit = (w == 3) ? (2 - c) : (4 - c);
+                            if ((row & (1 << bit)) != 0)
+                            {
+                                int px = curX + c;
+                                int py = startY + r;
+                                if (px >= 0 && px < 16 && py >= 0 && py < 16)
+                                    bmp.SetPixel(px, py, color);
+                            }
+                        }
+                    }
+                    curX += w + 1;
+                }
             }
 
             if (isCharging)
             {
                 Color boltCol = Color.FromArgb(255, 235, 59);
-                DrawBolt16Badge(bmp, 12, 1, boltCol);
+                bmp.SetPixel(14, 0, boltCol);
+                bmp.SetPixel(13, 1, boltCol); bmp.SetPixel(14, 1, boltCol);
+                bmp.SetPixel(12, 2, boltCol); bmp.SetPixel(13, 2, boltCol); bmp.SetPixel(14, 2, boltCol); bmp.SetPixel(15, 2, boltCol);
+                bmp.SetPixel(13, 3, boltCol); bmp.SetPixel(14, 3, boltCol);
+                bmp.SetPixel(13, 4, boltCol);
+                bmp.SetPixel(12, 5, boltCol);
             }
-        }
-
-        private static void DrawBolt16Badge(Bitmap bmp, int x, int y, Color c)
-        {
-            bmp.SetPixel(x + 2, y + 0, c);
-            bmp.SetPixel(x + 1, y + 1, c);
-            bmp.SetPixel(x + 2, y + 1, c);
-            bmp.SetPixel(x + 0, y + 2, c);
-            bmp.SetPixel(x + 1, y + 2, c);
-            bmp.SetPixel(x + 2, y + 2, c);
-            bmp.SetPixel(x + 3, y + 2, c);
-            bmp.SetPixel(x + 1, y + 3, c);
-            bmp.SetPixel(x + 2, y + 3, c);
-            bmp.SetPixel(x + 1, y + 4, c);
-            bmp.SetPixel(x + 0, y + 5, c);
         }
 
         private void OnPendingUpdateChangedHandler()

@@ -353,6 +353,16 @@ namespace RazerBatteryTray
         private ModernDeviceSwitcherFlyout switcherFlyout = null;
         private DateTime lastFlyoutCloseTime = DateTime.MinValue;
 
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.Style |= 0x02000000; // WS_CLIPCHILDREN: 杜绝主窗体背景绘制涂抹子控件
+                return cp;
+            }
+        }
+
         public MainForm(bool isAutoStart = false)
         {
             this.isAutoStartLaunch = isAutoStart;

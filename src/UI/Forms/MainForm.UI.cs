@@ -1123,6 +1123,9 @@ namespace RazerBatteryTray
             if (cardPerformance == null || cardSettings == null || btnRefresh == null || btnHideToTray == null) return;
             if (cardPerformance.Height == newCard2H) return;
 
+            int oldCard3Y = cardSettings.Top;
+            int oldBtnBottom = btnRefresh.Bottom;
+
             this.SuspendLayout();
             try
             {
@@ -1148,6 +1151,14 @@ namespace RazerBatteryTray
             finally
             {
                 this.ResumeLayout(false);
+            }
+
+            int minY = Math.Min(oldCard3Y, cardSettings.Top);
+            int maxY = Math.Max(oldBtnBottom, btnRefresh.Bottom);
+            int spanH = maxY - minY + (int)(16 * dpiScale);
+            if (spanH > 0)
+            {
+                this.Invalidate(new Rectangle(0, minY, this.ClientSize.Width, spanH), false);
             }
         }
 
@@ -1349,10 +1360,13 @@ namespace RazerBatteryTray
                 return;
             }
 
-            // 3. 核心生命周期保护：
-            // 折叠收起时，第0毫秒立刻隐藏子控件，防止下方卡片上滑时在物理像素上撞车重叠；
-            // 展开过程中，先保持子控件隐藏，待卡片平滑拉伸到位后再统一点亮。
-            SetGameRateControlsVisibility(false);
+            // 3. 卷帘门遮罩式动效生命周期：
+            // 展开开始时立即点亮子控件，配合卡片容器硬件裁剪 (WS_CLIPCHILDREN) 像卷帘门一样随着底边拉伸自然向下露出；
+            // 收回过程中保持子控件可见，随着底边向上收拢自然被裁切遮盖，待完全缩入卡片底边后才彻底设为 false。
+            if (autoGameRateEnabled)
+            {
+                SetGameRateControlsVisibility(true);
+            }
 
             animStartCardH = cardPerformance.Height;
             animStartTime = DateTime.UtcNow;
@@ -1372,12 +1386,10 @@ namespace RazerBatteryTray
                         cardAnimTimer.Stop();
                         AdjustPerformanceCardHeight(animTargetCardH);
 
-                        if (autoGameRateEnabled)
-                        {
-                            SetGameRateControlsVisibility(true);
-                        }
+                        // 收起彻底完成时关闭可见性，避免折叠状态下的无效命中或焦点捕获
+                        SetGameRateControlsVisibility(autoGameRateEnabled);
 
-                        // 终点无死角全量刷新：彻底抹除所有历史脏矩形残留
+                        // 终点全量深度刷新：彻底抹除所有历史脏矩形残留
                         this.Invalidate(true);
                         this.Update();
                         return;

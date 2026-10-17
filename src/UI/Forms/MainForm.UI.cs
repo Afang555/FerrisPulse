@@ -1123,24 +1123,32 @@ namespace RazerBatteryTray
             if (cardPerformance == null || cardSettings == null || btnRefresh == null || btnHideToTray == null) return;
             if (cardPerformance.Height == newCard2H) return;
 
-            cardPerformance.Height = newCard2H;
-            int padX = (int)(18 * dpiScale);
-            int baseW = (int)(470 * dpiScale);
-            int cardW = baseW - (padX * 2);
+            this.SuspendLayout();
+            try
+            {
+                cardPerformance.Height = newCard2H;
+                int padX = (int)(18 * dpiScale);
+                int baseW = (int)(470 * dpiScale);
+                int cardW = baseW - (padX * 2);
 
-            int card3Y = cardPerformance.Bottom + (int)(12 * dpiScale);
-            cardSettings.Location = new Point(padX, card3Y);
+                int card3Y = cardPerformance.Bottom + (int)(12 * dpiScale);
+                cardSettings.Location = new Point(padX, card3Y);
 
-            int card4Y = cardSettings.Bottom + (int)(14 * dpiScale);
-            int btnH = (int)(38 * dpiScale);
-            int btnGap = (int)(14 * dpiScale);
-            int btnW = (cardW - btnGap) / 2;
+                int card4Y = cardSettings.Bottom + (int)(14 * dpiScale);
+                int btnH = (int)(38 * dpiScale);
+                int btnGap = (int)(14 * dpiScale);
+                int btnW = (cardW - btnGap) / 2;
 
-            btnRefresh.Location = new Point(padX, card4Y);
-            btnHideToTray.Location = new Point(padX + btnW + btnGap, card4Y);
+                btnRefresh.Location = new Point(padX, card4Y);
+                btnHideToTray.Location = new Point(padX + btnW + btnGap, card4Y);
 
-            int clientH = card4Y + btnH + (int)(16 * dpiScale);
-            this.ClientSize = new Size(baseW, clientH);
+                int clientH = card4Y + btnH + (int)(16 * dpiScale);
+                this.ClientSize = new Size(baseW, clientH);
+            }
+            finally
+            {
+                this.ResumeLayout(false);
+            }
         }
 
         private void UpdateGameRateButtonSelection(int hz)
@@ -1323,40 +1331,66 @@ namespace RazerBatteryTray
         {
             if (cardPerformance == null) return;
             animTargetCardH = targetH;
-            if (cardPerformance.Height == targetH)
+
+            // 1. 若窗体未显示或处于最小化状态，直接原子同步重排，不消耗计时器
+            if (!this.Visible || this.WindowState == FormWindowState.Minimized)
             {
-                if (!autoGameRateEnabled) SetGameRateControlsVisibility(false);
+                if (cardAnimTimer != null && cardAnimTimer.Enabled) cardAnimTimer.Stop();
+                SetGameRateControlsVisibility(autoGameRateEnabled);
+                AdjustPerformanceCardHeight(targetH);
                 return;
             }
+
+            // 2. 若高度已然吻合，直接校准可见性并退出
+            if (cardPerformance.Height == targetH)
+            {
+                if (cardAnimTimer != null && cardAnimTimer.Enabled) cardAnimTimer.Stop();
+                SetGameRateControlsVisibility(autoGameRateEnabled);
+                return;
+            }
+
+            // 3. 核心生命周期保护：
+            // 折叠收起时，第0毫秒立刻隐藏子控件，防止下方卡片上滑时在物理像素上撞车重叠；
+            // 展开过程中，先保持子控件隐藏，待卡片平滑拉伸到位后再统一点亮。
+            SetGameRateControlsVisibility(false);
+
+            animStartCardH = cardPerformance.Height;
+            animStartTime = DateTime.UtcNow;
 
             if (cardAnimTimer == null)
             {
                 cardAnimTimer = new System.Windows.Forms.Timer();
-                cardAnimTimer.Interval = 15; // ~66 FPS
+                cardAnimTimer.Interval = 15; // 约 66 FPS
                 cardAnimTimer.Tick += (s, e) => {
                     if (cardPerformance == null) { cardAnimTimer.Stop(); return; }
-                    int curH = cardPerformance.Height;
-                    int diff = animTargetCardH - curH;
-                    if (Math.Abs(diff) <= 2)
+
+                    double elapsed = (DateTime.UtcNow - animStartTime).TotalMilliseconds;
+                    float progress = (float)(elapsed / ANIM_DURATION_MS);
+
+                    if (progress >= 1.0f)
                     {
-                        AdjustPerformanceCardHeight(animTargetCardH);
                         cardAnimTimer.Stop();
-                        if (!autoGameRateEnabled)
+                        AdjustPerformanceCardHeight(animTargetCardH);
+
+                        if (autoGameRateEnabled)
                         {
-                            SetGameRateControlsVisibility(false);
+                            SetGameRateControlsVisibility(true);
                         }
+
+                        // 终点无死角全量刷新：彻底抹除所有历史脏矩形残留
+                        this.Invalidate(true);
+                        this.Update();
                         return;
                     }
-                    int step = (int)Math.Round(diff * 0.35);
-                    if (step == 0) step = diff > 0 ? 1 : -1;
-                    AdjustPerformanceCardHeight(curH + step);
+
+                    // Cubic Ease-Out 平滑减速缓动曲线: 启程轻快、收尾极度平滑
+                    float rem = 1.0f - progress;
+                    float ease = 1.0f - (rem * rem * rem);
+                    int nextH = (int)Math.Round(animStartCardH + (animTargetCardH - animStartCardH) * ease);
+                    AdjustPerformanceCardHeight(nextH);
                 };
             }
 
-            if (autoGameRateEnabled)
-            {
-                SetGameRateControlsVisibility(true);
-            }
             cardAnimTimer.Start();
         }
 

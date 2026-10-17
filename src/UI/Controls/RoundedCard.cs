@@ -3,6 +3,7 @@
 // 所属区域: UI/Controls (基础原子控件层)
 // 核心职责:
 //   现代化深色亚克力质感圆角卡片面板容器，原生双缓冲，支持自定义圆角、背景色及微光边框。
+//   原生启用 WS_CLIPCHILDREN 与 WS_CLIPSIBLINGS 硬件级窗口剪裁，杜绝折叠动画期间子控件画面溢出与撕裂。
 //   提供全系统通用的静态 GetRoundedRectangle / GetRoundRectF 几何切角路径生成工具。
 // 依赖关系: 无
 //
@@ -41,6 +42,17 @@ namespace RazerBatteryTray
 
         public Color BorderColor { get; set; }
         public int CornerRadius { get; set; }
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.Style |= 0x02000000; // WS_CLIPCHILDREN
+                cp.Style |= 0x04000000; // WS_CLIPSIBLINGS
+                return cp;
+            }
+        }
 
         public RoundedCard()
         {

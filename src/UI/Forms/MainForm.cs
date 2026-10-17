@@ -245,7 +245,10 @@ namespace RazerBatteryTray
         private List<string> monitoredGameProcesses = new List<string> { "cs2.exe", "b1-win64-shipping.exe", "valorant-win64-shipping.exe" };
         private bool fallbackFullscreenEnabled = false;
         private System.Windows.Forms.Timer cardAnimTimer = null;
+        private int animStartCardH = 0;
         private int animTargetCardH = 0;
+        private DateTime animStartTime = DateTime.MinValue;
+        private const int ANIM_DURATION_MS = 160;
 
         private ToolStripMenuItem autoGameRateMenu;
         private ToolStripMenuItem autoGameRateToggleItem;

@@ -201,6 +201,10 @@ namespace RazerBatteryTray
         private Dictionary<string, int> pendingRazerStageCandidates = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         private int pendingRapooDpiCandidate = -1;
         private int pendingRapooStageCandidate = -1;
+        private int lastMonitoredValkyrieDpi = -1;
+        private int lastMonitoredValkyrieStage = -1;
+        private int pendingValkyrieDpiCandidate = -1;
+        private int pendingValkyrieStageCandidate = -1;
         private DpiOsdForm osdForm;
 
         // Visual controls - Card 1: Status

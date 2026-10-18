@@ -181,6 +181,48 @@ namespace RazerBatteryTray
                             }
                         }
                     }
+
+                    // 4. 瓦尔基里设备极速 DPI 监听
+                    int vDpi, vStage, vCount;
+                    if (ValkyrieDeviceHelper.FastQueryDpi(out vDpi, out vStage, out vCount))
+                    {
+                        int validVCount = vCount > 0 ? vCount : 5;
+                        if (vDpi >= 100 && vDpi <= 40000 && vStage >= 1 && vStage <= validVCount)
+                        {
+                            if (lastMonitoredValkyrieDpi != -1 && (vDpi != lastMonitoredValkyrieDpi || vStage != lastMonitoredValkyrieStage))
+                            {
+                                if (pendingValkyrieDpiCandidate == vDpi && pendingValkyrieStageCandidate == vStage)
+                                {
+                                    pendingValkyrieDpiCandidate = -1;
+                                    pendingValkyrieStageCandidate = -1;
+                                    int newDpi = vDpi;
+                                    int newStage = vStage;
+                                    int newCount = vCount;
+                                    try
+                                    {
+                                        this.BeginInvoke(new Action(() => {
+                                            OnDpiChanged("Valkyrie", newDpi, newStage, newCount);
+                                        }));
+                                    }
+                                    catch { }
+                                    lastMonitoredValkyrieDpi = vDpi;
+                                    lastMonitoredValkyrieStage = vStage;
+                                }
+                                else
+                                {
+                                    pendingValkyrieDpiCandidate = vDpi;
+                                    pendingValkyrieStageCandidate = vStage;
+                                }
+                            }
+                            else
+                            {
+                                pendingValkyrieDpiCandidate = -1;
+                                pendingValkyrieStageCandidate = -1;
+                                lastMonitoredValkyrieDpi = vDpi;
+                                lastMonitoredValkyrieStage = vStage;
+                            }
+                        }
+                    }
                 }
                 catch { }
                 int pollSleep = isMouseSleeping ? 250 : 50; // 鼠标活跃时 50ms 极速响应，按键瞬间 OSD 丝滑弹出；待机时 250ms 静默
@@ -320,6 +362,18 @@ namespace RazerBatteryTray
                         OnDpiChanged("Rapoo", dpi, targetStage > 0 ? targetStage : 1, dpiStageValues.Length);
                     }));
                 }
+                else if (curDev != null && curDev.Brand == "Valkyrie")
+                {
+                    ValkyrieDeviceHelper.SetValkyrieDpi(dpi);
+                    this.BeginInvoke(new Action(() => {
+                        if (curDev != null)
+                        {
+                            curDev.Dpi = dpi;
+                            if (targetStage > 0) curDev.DpiStage = targetStage;
+                        }
+                        OnDpiChanged("Valkyrie", dpi, targetStage > 0 ? targetStage : 1, dpiStageValues.Length);
+                    }));
+                }
                 else
                 {
                     string rzDevId = curDev != null ? curDev.DeviceId : null;
@@ -372,6 +426,10 @@ namespace RazerBatteryTray
                     if (curDev != null && curDev.Brand == "Rapoo")
                     {
                         ok = RapooDeviceHelper.SetRapooPollingRate(hz);
+                    }
+                    else if (curDev != null && curDev.Brand == "Valkyrie")
+                    {
+                        ok = ValkyrieDeviceHelper.SetValkyriePollingRate(hz);
                     }
                     else
                     {
@@ -489,7 +547,7 @@ namespace RazerBatteryTray
                 if (!autoGameRateEnabled) return;
                 var curDev = selectedDevice;
                 if (curDev == null) return;
-                if (curDev.Brand != "Razer" && curDev.Brand != "Rapoo") return;
+                if (curDev.Brand != "Razer" && curDev.Brand != "Rapoo" && curDev.Brand != "Valkyrie") return;
 
                 string procTitle = "";
                 bool isGame = false;
@@ -566,6 +624,7 @@ namespace RazerBatteryTray
                 for (int attempt = 0; attempt < 3; attempt++)
                 {
                     if (brand == "Rapoo") ok = RapooDeviceHelper.SetRapooPollingRate(targetHz);
+                    else if (brand == "Valkyrie") ok = ValkyrieDeviceHelper.SetValkyriePollingRate(targetHz);
                     else ok = RazerDeviceHelper.SetRazerPollingRate(targetHz, curDev.DeviceId);
                     if (ok) break;
                     Thread.Sleep(80);
@@ -613,6 +672,7 @@ namespace RazerBatteryTray
                 for (int attempt = 0; attempt < 3; attempt++)
                 {
                     if (brand == "Rapoo") ok = RapooDeviceHelper.SetRapooPollingRate(targetHz);
+                    else if (brand == "Valkyrie") ok = ValkyrieDeviceHelper.SetValkyriePollingRate(targetHz);
                     else ok = RazerDeviceHelper.SetRazerPollingRate(targetHz, curDev.DeviceId);
                     if (ok) break;
                     Thread.Sleep(80);

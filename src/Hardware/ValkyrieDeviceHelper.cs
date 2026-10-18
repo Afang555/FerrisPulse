@@ -42,6 +42,12 @@ namespace RazerBatteryTray
 
         public static DateTime CachedLastUpdated = DateTime.MinValue;
 
+        public static string LastMouseDevicePath = null;
+        public static int CachedPollingRate = 1000;
+        public static int CachedDpi = 800;
+        public static int CachedDpiStage = 1;
+        public static int CachedDpiCount = 5;
+
         public static bool IsValkyrieDevice(string identifier)
         {
             if (string.IsNullOrEmpty(identifier)) return false;
@@ -229,6 +235,250 @@ namespace RazerBatteryTray
             return null;
         }
 
+        public static int DecodeReportRate(byte raw)
+        {
+            switch (raw)
+            {
+                case 129: return 8000;
+                case 130: return 4000;
+                case 132: return 2000;
+                case 1:   return 1000;
+                case 2:   return 500;
+                case 4:   return 250;
+                case 8:   return 125;
+            }
+            return 0;
+        }
+
+        public static byte EncodeReportRate(int hz)
+        {
+            switch (hz)
+            {
+                case 8000: return 129;
+                case 4000: return 130;
+                case 2000: return 132;
+                case 1000: return 1;
+                case 500:  return 2;
+                case 250:  return 4;
+                case 125:  return 8;
+            }
+            return 1;
+        }
+
+        public static int QueryPollingRateFromHandle(IntPtr handle)
+        {
+            try
+            {
+                byte[] tx = new byte[65];
+                tx[0] = 0x00;
+                tx[1] = 0xD3; // FEA_CMD_MOUSE_GET_OPTIONPARAM0
+                if (!RazerDeviceHelper.HidD_SetFeature(handle, tx, tx.Length))
+                {
+                    byte[] tx64 = new byte[64];
+                    tx64[0] = 0xD3;
+                    RazerDeviceHelper.HidD_SetFeature(handle, tx64, tx64.Length);
+                }
+
+                Thread.Sleep(10);
+                byte[] rx = new byte[65];
+                if (RazerDeviceHelper.HidD_GetFeature(handle, rx, rx.Length))
+                {
+                    int offset = (rx[0] == 0x00) ? 1 : 0;
+                    byte raw = rx[offset + 9];
+                    int hz = DecodeReportRate(raw);
+                    if (hz > 0) return hz;
+                }
+            }
+            catch { }
+            return 0;
+        }
+
+        public static bool FastQueryDpi(out int dpi, out int stage, out int count)
+        {
+            dpi = CachedDpi;
+            stage = CachedDpiStage;
+            count = CachedDpiCount;
+            if (string.IsNullOrEmpty(LastMouseDevicePath)) return false;
+
+            IntPtr handle = RazerDeviceHelper.CreateFile(
+                LastMouseDevicePath,
+                0,
+                RazerDeviceHelper.FILE_SHARE_READ | RazerDeviceHelper.FILE_SHARE_WRITE,
+                IntPtr.Zero,
+                RazerDeviceHelper.OPEN_EXISTING,
+                0,
+                IntPtr.Zero);
+
+            if (handle == IntPtr.Zero || handle.ToInt64() == -1) return false;
+
+            try
+            {
+                byte[] tx = new byte[65];
+                tx[0] = 0x00;
+                tx[1] = 0xD4; // FEA_CMD_MOUSE_GET_OPTIONPARAM1
+                tx[2] = 0x00; // Profile 0
+                if (!RazerDeviceHelper.HidD_SetFeature(handle, tx, tx.Length))
+                {
+                    byte[] tx64 = new byte[64];
+                    tx64[0] = 0xD4;
+                    tx64[1] = 0x00;
+                    RazerDeviceHelper.HidD_SetFeature(handle, tx64, tx64.Length);
+                }
+
+                Thread.Sleep(10);
+                byte[] rx = new byte[65];
+                if (RazerDeviceHelper.HidD_GetFeature(handle, rx, rx.Length))
+                {
+                    int offset = (rx[0] == 0x00) ? 1 : 0;
+                    int curIdx = rx[offset + 2];
+                    if (curIdx > 8) curIdx = 0;
+                    int c = rx[offset + 3];
+                    if (c > 0 && c <= 8)
+                    {
+                        int d = rx[offset + 8 + curIdx * 2] | (rx[offset + 9 + curIdx * 2] << 8);
+                        if (d >= 100 && d <= 40000)
+                        {
+                            dpi = d;
+                            stage = curIdx + 1;
+                            count = c;
+                            CachedDpi = dpi;
+                            CachedDpiStage = stage;
+                            CachedDpiCount = count;
+                            return true;
+                        }
+                    }
+                }
+            }
+            catch { }
+            finally
+            {
+                RazerDeviceHelper.CloseHandle(handle);
+            }
+
+            return false;
+        }
+
+        public static bool SetValkyriePollingRate(int hz)
+        {
+            if (string.IsNullOrEmpty(LastMouseDevicePath)) return false;
+
+            IntPtr handle = RazerDeviceHelper.CreateFile(
+                LastMouseDevicePath,
+                0,
+                RazerDeviceHelper.FILE_SHARE_READ | RazerDeviceHelper.FILE_SHARE_WRITE,
+                IntPtr.Zero,
+                RazerDeviceHelper.OPEN_EXISTING,
+                0,
+                IntPtr.Zero);
+
+            if (handle == IntPtr.Zero || handle.ToInt64() == -1) return false;
+
+            try
+            {
+                byte code = EncodeReportRate(hz);
+                byte[] tx = new byte[65];
+                tx[0] = 0x00;
+                tx[1] = 0x04; // FEA_CMD_SET_REPORT
+                tx[2] = 0x00; // Profile 0
+                tx[3] = code;
+
+                bool ok = RazerDeviceHelper.HidD_SetFeature(handle, tx, tx.Length);
+                if (!ok)
+                {
+                    byte[] tx64 = new byte[64];
+                    tx64[0] = 0x04;
+                    tx64[1] = 0x00;
+                    tx64[2] = code;
+                    ok = RazerDeviceHelper.HidD_SetFeature(handle, tx64, tx64.Length);
+                }
+
+                if (ok)
+                {
+                    CachedPollingRate = hz;
+                    return true;
+                }
+            }
+            catch { }
+            finally
+            {
+                RazerDeviceHelper.CloseHandle(handle);
+            }
+
+            return false;
+        }
+
+        public static bool SetValkyrieDpi(int dpi)
+        {
+            if (string.IsNullOrEmpty(LastMouseDevicePath)) return false;
+
+            IntPtr handle = RazerDeviceHelper.CreateFile(
+                LastMouseDevicePath,
+                0,
+                RazerDeviceHelper.FILE_SHARE_READ | RazerDeviceHelper.FILE_SHARE_WRITE,
+                IntPtr.Zero,
+                RazerDeviceHelper.OPEN_EXISTING,
+                0,
+                IntPtr.Zero);
+
+            if (handle == IntPtr.Zero || handle.ToInt64() == -1) return false;
+
+            try
+            {
+                // First read Option1 to preserve other stages
+                byte[] txGet = new byte[65];
+                txGet[0] = 0x00;
+                txGet[1] = 0xD4;
+                txGet[2] = 0x00;
+                RazerDeviceHelper.HidD_SetFeature(handle, txGet, txGet.Length);
+                Thread.Sleep(10);
+                byte[] rx = new byte[65];
+                if (RazerDeviceHelper.HidD_GetFeature(handle, rx, rx.Length))
+                {
+                    int offset = (rx[0] == 0x00) ? 1 : 0;
+                    byte[] txSet = new byte[65];
+                    txSet[0] = 0x00;
+                    txSet[1] = 0x54; // FEA_CMD_MOUSE_SET_OPTIONPARAM1
+                    txSet[2] = 0x00; // Profile 0
+                    int curIdx = rx[offset + 2];
+                    if (curIdx > 8) curIdx = 0;
+                    txSet[3] = (byte)curIdx;
+                    int count = rx[offset + 3];
+                    if (count <= 0 || count > 8) count = 5;
+                    txSet[4] = (byte)count;
+
+                    // Copy existing DPIs
+                    for (int i = 0; i < count; i++)
+                    {
+                        int srcX = rx[offset + 8 + i * 2] | (rx[offset + 9 + i * 2] << 8);
+                        int srcY = rx[offset + 24 + i * 2] | (rx[offset + 25 + i * 2] << 8);
+                        if (i == curIdx)
+                        {
+                            srcX = dpi;
+                            srcY = dpi;
+                        }
+                        txSet[1 + 8 + i * 2] = (byte)(srcX & 0xFF);
+                        txSet[1 + 9 + i * 2] = (byte)(srcX >> 8);
+                        txSet[1 + 24 + i * 2] = (byte)(srcY & 0xFF);
+                        txSet[1 + 25 + i * 2] = (byte)(srcY >> 8);
+                    }
+
+                    bool ok = RazerDeviceHelper.HidD_SetFeature(handle, txSet, txSet.Length);
+                    if (ok)
+                    {
+                        CachedDpi = dpi;
+                        return true;
+                    }
+                }
+            }
+            catch { }
+            finally
+            {
+                RazerDeviceHelper.CloseHandle(handle);
+            }
+
+            return false;
+        }
+
         public static List<MouseBatteryInfo> QueryAllValkyrieDevices()
         {
             List<MouseBatteryInfo> list = new List<MouseBatteryInfo>();
@@ -343,6 +593,7 @@ namespace RazerBatteryTray
                                                 string mouseModel = GetModelName(attr.VendorID, attr.ProductID, prodStr, DeviceCategory.Mouse);
                                                 CachedMouseName = mouseModel;
 
+                                                LastMouseDevicePath = devicePath;
                                                 MouseBatteryInfo mouseInfo = new MouseBatteryInfo();
                                                 mouseInfo.DeviceId = string.Format("Valkyrie:{0:X4}:{1:X4}:MS", attr.VendorID, attr.ProductID);
                                                 mouseInfo.HardwareFingerprint = string.Format("HID:{0:X4}:{1:X4}", attr.VendorID, attr.ProductID);
@@ -354,6 +605,42 @@ namespace RazerBatteryTray
                                                 mouseInfo.IsConnected = mouseOnline;
                                                 mouseInfo.IsSleeping = !mouseOnline;
                                                 mouseInfo.IsCharging = false;
+                                                mouseInfo.SupportedPollingRates = new int[] { 125, 250, 500, 1000, 2000, 4000, 8000 };
+
+                                                if (mouseOnline)
+                                                {
+                                                    int hz = QueryPollingRateFromHandle(handle);
+                                                    if (hz > 0)
+                                                    {
+                                                        mouseInfo.PollingRate = hz;
+                                                        CachedPollingRate = hz;
+                                                    }
+                                                    else
+                                                    {
+                                                        mouseInfo.PollingRate = CachedPollingRate;
+                                                    }
+
+                                                    int qDpi, qStage, qCount;
+                                                    if (FastQueryDpi(out qDpi, out qStage, out qCount))
+                                                    {
+                                                        mouseInfo.Dpi = qDpi;
+                                                        mouseInfo.DpiStage = qStage;
+                                                        mouseInfo.DpiStageCount = qCount;
+                                                    }
+                                                    else
+                                                    {
+                                                        mouseInfo.Dpi = CachedDpi;
+                                                        mouseInfo.DpiStage = CachedDpiStage;
+                                                        mouseInfo.DpiStageCount = CachedDpiCount;
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    mouseInfo.PollingRate = CachedPollingRate;
+                                                    mouseInfo.Dpi = CachedDpi;
+                                                    mouseInfo.DpiStage = CachedDpiStage;
+                                                    mouseInfo.DpiStageCount = CachedDpiCount;
+                                                }
 
                                                 if (mouseBatt > 0 && mouseBatt <= 100)
                                                 {

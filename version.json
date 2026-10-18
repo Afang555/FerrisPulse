@@ -1,13 +1,13 @@
 ﻿{
-    "latestVersion":  "2.0.3",
+    "latestVersion":  "2.0.4",
     "releaseDate":  "2026-10-18",
     "minSupportedVersion":  "1.0.0",
-    "downloadUrl":  "https://gitee.com/Ferris-echo/ferris-pulse/releases/download/v2.0.3/FerrisPulse.exe",
-    "sha256":  "34ec3a10b23f5d926b9b0a4fcd58813232a8d5a8ddce05d42f1f101209c4743d",
-    "fileSize":  704000,
+    "downloadUrl":  "https://gitee.com/Ferris-echo/ferris-pulse/releases/download/v2.0.4/FerrisPulse.exe",
+    "sha256":  "3f1c83ee42999fcb91bab60d612609559455548f0b902f95484c84def7fa7af5",
+    "fileSize":  731136,
     "changelog":  [
-                      "【托盘样式更新】新增「纯数字极简」电量形态，重绘现代电竞断连图标，支持右键菜单实时无缝切换；",
-                      "【性能卡死修复】硬件轮询全面异步化，彻底根除跨屏拖拽与 DPI 切换时的假死泛白、未响应及黑边条；",
-                      "【窗口比例优化】新增极限缩放智能防溢出算法，彻底解决高缩放下底部截断问题，恢复 4K 自然舒适比例并移除粗白滚动条。"
+                      "【瓦尔基里全系支持】深度逆向解析私有 HID 报文，无驱动原生支持 VK 全系机械键盘（VK 99/87/75 等）与电竞鼠标（VK M5/M7 等）的双模精准电量、8K 极限回报率与物理档位联动；",
+                      "【XY轴DPI独立调节】新增雷蛇与瓦尔基里鼠标 X/Y 轴灵敏度独立调节引擎与板载固化存储，内置电竞比例快捷联动胶囊（1:1、4:3、16:10）与双微调框；",
+                      "【悬浮OSD与界面精修】屏幕悬浮 OSD 自适应双轴 DPI 实时显示与瓦尔基里电竞粉红配色，性能调节面板全面优化为统一均匀的 9px 行间距排版。"
                   ]
 }

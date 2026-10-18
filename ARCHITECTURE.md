@@ -1,4 +1,4 @@
-﻿# FerrisPulse · 灵脉 系统架构与 AI 维护全域指南 (ARCHITECTURE.md)
+# FerrisPulse · 灵脉 系统架构与 AI 维护全域指南 (ARCHITECTURE.md)
 
 本文档为 **FerrisPulse · 灵脉 (多品牌外设感知与电量管理系统)** 的全景架构地图与开发规范。
 所有参与维护、功能扩展或 Bug 修复的工程师与 AI Agent，**必须严格遵循本文档定义的目录拓扑与行为准则**。
@@ -38,6 +38,7 @@ D:\FerrisPulse · 灵脉\
     │   ├── VgnDeviceHelper.cs   [VGN / 蜻蜓 / ATK 协议解析]
     │   ├── LogitechDeviceHelper.cs [罗技 HID++ 协议解析]
     │   ├── NuphyDeviceHelper.cs [NuPhy 键盘电量协议与侧灯控制]
+    │   ├── ValkyrieDeviceHelper.cs [瓦尔基里全系键盘/鼠标私有 HID 协议、2.4G 接收器多模解析、8K 回报率与 DPI 调节]
     │   ├── BluetoothDeviceHelper.cs [Windows 原生 BLE 电池服务]
     │   ├── GenericHidHelper.cs  [通用 HID 电池报告解析]
     │   ├── UniversalWinLockHelper.cs [Windows 键硬件/驱动级防误触锁定]
@@ -111,6 +112,7 @@ D:\FerrisPulse · 灵脉\
 | **托盘图标样式与动态设备右键菜单** | `src/UI/Forms/MainForm.Tray.cs` | 托盘样式渲染 (0: 现代胶囊电池, 1: 醒目数字能量表, 2: 极简纯数字) 与全新 Fluent 断联图标、多外设快捷切换 |
 | **全键无冲测速仪 / 键盘按键监控** | `src/UI/Forms/KeyRolloverSpeedForm.cs` | 底层键盘钩子与高帧率矩阵点亮 |
 | **主界面暗黑卡片风格 / 矢量闪电** | `src/UI/Theme/ModernThemeHelper.cs` | 统一颜色色板与纯矢量图标绘制 |
+| **瓦尔基里全系键盘/鼠标支持** | `src/Hardware/ValkyrieDeviceHelper.cs` | 瓦尔基里全系 2.4G 接收器/HID 协议解析、双模电量、8K 回报率与 DPI 调节 |
 | **按钮、滑块、分段选项卡外观** | `src/UI/Controls/*.cs` | 独立的原子自定义双缓冲 GDI+ 控件 |
 
 ---

@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // 模块名称: DeviceManager.cs
 // 所属区域: Hardware (硬件驱动层)
 // 核心职责:
@@ -413,6 +413,22 @@ namespace RazerBatteryTray
             catch { }
         }
 
+        public static void CleanupDuplicateValkyrieDevices()
+        {
+            try
+            {
+                var customConfigs = LoadCustomDevices();
+                foreach (var c in customConfigs)
+                {
+                    if (c.DeviceId != null && (c.DeviceId.StartsWith("HID:374A:", StringComparison.OrdinalIgnoreCase) || c.DeviceId.StartsWith("HID:347A:", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        DeleteCustomDevice(c.DeviceId);
+                    }
+                }
+            }
+            catch { }
+        }
+
         public static void UpdateCustomDeviceBattery(string deviceId, int battery, DateTime lastSeen)
         {
             if (string.IsNullOrEmpty(deviceId)) return;
@@ -436,6 +452,7 @@ namespace RazerBatteryTray
 
             CleanupDuplicateLogitechDevices();
             CleanupDuplicateRazerDevices();
+            CleanupDuplicateValkyrieDevices();
 
             List<MouseBatteryInfo> list = new List<MouseBatteryInfo>();
 

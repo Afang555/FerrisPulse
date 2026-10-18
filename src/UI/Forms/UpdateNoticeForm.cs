@@ -322,9 +322,30 @@ namespace RazerBatteryTray
 
             if (updateInfo.Changelog != null && updateInfo.Changelog.Count > 0)
             {
+                System.Collections.Generic.List<string> displayItems = new System.Collections.Generic.List<string>();
                 for (int i = 0; i < updateInfo.Changelog.Count; i++)
                 {
-                    string itemText = "•  " + updateInfo.Changelog[i];
+                    string entry = updateInfo.Changelog[i];
+                    if (string.IsNullOrEmpty(entry)) continue;
+
+                    if (entry.Contains("【") && entry.IndexOf("【") != entry.LastIndexOf("【"))
+                    {
+                        string[] parts = System.Text.RegularExpressions.Regex.Split(entry, @"(?=【)");
+                        foreach (string p in parts)
+                        {
+                            string cp = p.Trim().TrimEnd(',', '，', ';', '；');
+                            if (!string.IsNullOrEmpty(cp)) displayItems.Add(cp);
+                        }
+                    }
+                    else
+                    {
+                        displayItems.Add(entry);
+                    }
+                }
+
+                for (int i = 0; i < displayItems.Count; i++)
+                {
+                    string itemText = "•  " + displayItems[i];
                     Label lblItem = new Label();
                     lblItem.Text = itemText;
                     lblItem.Font = new Font("Microsoft YaHei UI", 9F);

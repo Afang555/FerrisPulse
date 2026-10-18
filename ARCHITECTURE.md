@@ -1,4 +1,4 @@
-# FerrisPulse · 灵脉 系统架构与 AI 维护全域指南 (ARCHITECTURE.md)
+﻿# FerrisPulse · 灵脉 系统架构与 AI 维护全域指南 (ARCHITECTURE.md)
 
 本文档为 **FerrisPulse · 灵脉 (多品牌外设感知与电量管理系统)** 的全景架构地图与开发规范。
 所有参与维护、功能扩展或 Bug 修复的工程师与 AI Agent，**必须严格遵循本文档定义的目录拓扑与行为准则**。

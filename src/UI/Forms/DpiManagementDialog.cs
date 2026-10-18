@@ -21,7 +21,7 @@ using System.Windows.Forms;
 
 namespace RazerBatteryTray
 {
-    public class DpiManagementDialog : Form
+    public class DpiManagementDialog : DpiAwareForm
     {
         public int[] Stages { get; private set; }
         public int ActiveStage { get; private set; }
@@ -31,7 +31,6 @@ namespace RazerBatteryTray
         private int minDpi;
         private int maxDpi;
         private string sensorDesc;
-        private float dpiScale = 1.0f;
         private List<int> stageValues = new List<int>();
         private int currentActiveStage = 1;
 
@@ -42,18 +41,13 @@ namespace RazerBatteryTray
         private DpiActionButton btnCancel;
         private List<DpiStageRowControl> rowControls = new List<DpiStageRowControl>();
 
-        protected override void OnHandleCreated(EventArgs e)
-        {
-            base.OnHandleCreated(e);
-            ModernThemeHelper.ApplyModernWin11Theme(this.Handle);
-        }
-
         public DpiManagementDialog(string devName, int[] initialStages, int currentStage, RazerDeviceHelper.RazerDpiCapability cap)
-            : this(devName, initialStages, currentStage, cap, 0f)
+            : this(devName, initialStages, currentStage, cap, 1.0f)
         {
         }
 
         public DpiManagementDialog(string devName, int[] initialStages, int currentStage, RazerDeviceHelper.RazerDpiCapability cap, float scale)
+            : base(scale)
         {
             this.deviceName = devName ?? "外设设备";
             this.capability = cap ?? new RazerDeviceHelper.RazerDpiCapability { MaxDpi = 35000, MinDpi = 100, Step = 1, Description = "Focus Pro 35K Gen-2 · 1-DPI 精准步进" };

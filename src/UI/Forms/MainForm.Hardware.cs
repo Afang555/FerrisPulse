@@ -2040,6 +2040,7 @@ namespace RazerBatteryTray
             if (!info.IsConnected)
             {
                 isMouseSleeping = false;
+                EnableMouseWakeDetector(false);
                 lblDeviceName.Text = info.DisplayName;
 
                 string battDisplay = (info.BatteryPercent > 0 ? info.BatteryPercent.ToString() : "--") + "%";
@@ -2066,6 +2067,7 @@ namespace RazerBatteryTray
             if (info.Category == DeviceCategory.Keyboard)
             {
                 isMouseSleeping = false;
+                EnableMouseWakeDetector(false);
                 if (updateTimer != null) updateTimer.Interval = userSelectedInterval;
 
                 lblDeviceName.Text = info.DisplayName;
@@ -2163,8 +2165,8 @@ namespace RazerBatteryTray
                 return;
             }
 
-            // Connected mouse with zero/unknown battery (indicates sleep or no battery telemetry)
-            if (info.BatteryPercent <= 0 && info.Category == DeviceCategory.Mouse)
+            // Connected mouse with zero/unknown battery (only query cache if device is genuinely sleeping)
+            if (info.BatteryPercent <= 0 && info.Category == DeviceCategory.Mouse && info.IsSleeping)
             {
                 int cached = -1;
                 if (info.Brand == "Rapoo")
@@ -2177,12 +2179,15 @@ namespace RazerBatteryTray
                     cached = (st != null && st.BatteryPercent > 0) ? st.BatteryPercent : RazerDeviceHelper.CachedBatteryPercent;
                 }
                 info.BatteryPercent = cached > 0 ? cached : -1;
-                info.IsSleeping = true;
             }
 
             if (info.IsSleeping)
             {
                 isMouseSleeping = true;
+                if (info.Category == DeviceCategory.Mouse)
+                {
+                    EnableMouseWakeDetector(true);
+                }
                 if (updateTimer != null) updateTimer.Interval = userSelectedInterval;
 
                 Color sleepColor = Color.FromArgb(255, 183, 77); // Warm amber
@@ -2222,6 +2227,7 @@ namespace RazerBatteryTray
 
             // Normal awake state (Mouse / Gamepad / Headset / Generic)
             isMouseSleeping = false;
+            EnableMouseWakeDetector(false);
             if (updateTimer != null) updateTimer.Interval = userSelectedInterval;
 
             Color accentColor;

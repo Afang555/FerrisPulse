@@ -20,7 +20,7 @@ using System.Windows.Forms;
 
 namespace RazerBatteryTray
 {
-    public class DpiOsdForm : Form
+    public class DpiOsdForm : DpiAwareForm
     {
         [DllImport("user32.dll")]
         private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
@@ -44,13 +44,20 @@ namespace RazerBatteryTray
         private string currentRateTitle = "电竞回报率";
         private System.Windows.Forms.Timer displayTimer;
         private System.Windows.Forms.Timer fadeTimer;
-        private float dpiScale = 1.0f;
         private string currentBrand = "Razer";
 
         public int OsdStyle
         {
             get { return osdStyle; }
             set { osdStyle = value; }
+        }
+
+        public void UpdateDpiScale(float scale)
+        {
+            if (scale < 1.0f) scale = 1.0f;
+            this.dpiScale = scale;
+            this.Size = new Size((int)(160 * dpiScale), (int)(58 * dpiScale));
+            UpdateOsdRegion(this.Width, this.Height);
         }
 
         protected override bool ShowWithoutActivation
@@ -100,9 +107,19 @@ namespace RazerBatteryTray
             catch { }
         }
 
-        public DpiOsdForm(float scale)
+        protected override void OnDpiScaleChanged(float oldScale, float newScale)
         {
-            this.dpiScale = scale;
+            base.OnDpiScaleChanged(oldScale, newScale);
+            UpdateDpiScale(newScale);
+        }
+
+        public DpiOsdForm() : this(0f)
+        {
+        }
+
+        public DpiOsdForm(float scale) : base(scale)
+        {
+            if (scale > 0f) this.dpiScale = scale;
             this.FormBorderStyle = FormBorderStyle.None;
             this.ShowInTaskbar = false;
             // Note: Do NOT set this.TopMost = true; WinForms TopMost setter calls SetWindowPos without SWP_NOACTIVATE!

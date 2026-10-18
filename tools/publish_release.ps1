@@ -117,7 +117,7 @@ if (-not (Test-Path $zipPath)) {
 
 # 7. Git 提交、打 Tag 并双推
 Write-Host "`n[6/7] 提交 Git 代码与 Tag，同步推送到 GitHub & Gitee..." -ForegroundColor Yellow
-git add src/Properties/AssemblyInfo.cs version.json tools/build_release_zip.ps1 tools/publish_release.ps1 .gitignore
+git add src/Properties/AssemblyInfo.cs version.json tools/build_release_zip.ps1 tools/publish_release.ps1 .gitignore CHANGELOG.md
 $gitDiff = git status --porcelain
 if ($gitDiff) {
     git commit -m "chore(release): bump version to $tag"

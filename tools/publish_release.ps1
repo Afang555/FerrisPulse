@@ -74,6 +74,8 @@ $utf8WithBom = New-Object System.Text.UTF8Encoding($true)
 
 # 3. 执行纯净构建
 Write-Host "`n[2/7] 执行原生 build.bat 编译 (C# 5.0 / .NET 4.0)..." -ForegroundColor Yellow
+Stop-Process -Name "FerrisPulse" -Force -ErrorAction SilentlyContinue
+Start-Sleep -Milliseconds 500
 & cmd.exe /c "build.bat"
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $rootDir "FerrisPulse.exe"))) {
     Write-Error "编译失败！请检查编译输出。"

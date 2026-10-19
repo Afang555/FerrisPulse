@@ -1,13 +1,20 @@
 ﻿{
-    "latestVersion":  "2.0.4",
-    "releaseDate":  "2026-10-18",
+    "latestVersion":  "2.1.0",
+    "releaseDate":  "2026-10-19",
     "minSupportedVersion":  "1.0.0",
-    "downloadUrl":  "https://gitee.com/Ferris-echo/ferris-pulse/releases/download/v2.0.4/FerrisPulse.exe",
-    "sha256":  "3f1c83ee42999fcb91bab60d612609559455548f0b902f95484c84def7fa7af5",
-    "fileSize":  731136,
+    "downloadUrl":  "https://gitee.com/Ferris-echo/ferris-pulse/releases/download/v2.1.0/FerrisPulse.exe",
+    "sha256":  "5d7f083a134f61bdea6a2ca22b25ef091bad8ff4465209d54f62bfc48017b28a",
+    "fileSize":  824320,
     "changelog":  [
-                      "【瓦尔基里全系支持】深度逆向解析私有 HID 报文，无驱动原生支持 VK 全系机械键盘（VK 99/87/75 等）与电竞鼠标（VK M5/M7 等）的双模精准电量、8K 极限回报率与物理档位联动；",
-                      "【XY轴DPI独立调节】新增雷蛇与瓦尔基里鼠标 X/Y 轴灵敏度独立调节引擎与板载固化存储，内置电竞比例快捷联动胶囊（1:1、4:3、16:10）与双微调框；",
-                      "【悬浮OSD与界面精修】屏幕悬浮 OSD 自适应双轴 DPI 实时显示与瓦尔基里电竞粉红配色，性能调节面板全面优化为统一均匀的 9px 行间距排版。"
+                      "一、 功能与体验革新",
+                      "【XY轴DPI独立调节】新增鼠标 X/Y 轴灵敏度独立分开调校，内置 1:1、4:3、16:10 等电竞比例快捷联动胶囊与双轴自适应 HUD 悬浮 OSD；",
+                      "【游戏自动调节加入DPI】全屏游戏自动优化现已正式加入专属 DPI 切换，进退游戏自动秒级升降档位，配备盲操 HUD 与提示音；",
+                      "【正式支持低回报率选项】正式加入 125Hz、250Hz、500Hz 等节能档位，日常办公更省电、降低低配 CPU 占用，满足复古游戏手感；",
+                      "【Windows原生展开动画】点击托盘呼出 100% 重现首次开启软件的 Windows 原生缩放展开动效，原位就地弹出，彻底消灭白框闪烁；",
+                      "二、 品牌协议深度融入与外设适配",
+                      "【罗技/雷柏等协议深度融入】深度融入罗技、雷柏、瓦尔基里等品牌协议，免开后台直接调节 DPI、回报率与游戏自动调节；",
+                      "【Apple & Beats 全系适配】原生支持 AirPods 全系与 Beats 家族全系列耳机，加入真配对白名单杜绝路人误扫，修正真实蓝牙名称；",
+                      "【HyperX 飓风三原生支持】新增极度未知 HyperX 飓风三 (Cloud III Wireless) 无线耳机电量与静音感知（特别鸣谢群友“rm -rf /*”的代码贡献！）；",
+                      "【瓦尔基里键盘电量深度修复】VK 全系机械键盘物理电量读取全面恢复正常，告别“免驱”退化，完善键鼠同接收器独立分类识别。"
                   ]
 }

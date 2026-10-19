@@ -82,11 +82,18 @@ namespace RazerBatteryTray
             {
                 foreach (var d in existing)
                 {
+                    if (DeviceManager.IsDeviceHidden(d.DeviceId)) continue;
+                    if (!string.IsNullOrEmpty(d.HardwareFingerprint) && DeviceManager.IsDeviceHidden(d.HardwareFingerprint)) continue;
+
                     existingIds.Add(d.DeviceId);
-                    if (!string.IsNullOrEmpty(d.HardwareFingerprint)) existingIds.Add(d.HardwareFingerprint);
-                    if (d.DeviceId.StartsWith("Razer:1532:", StringComparison.OrdinalIgnoreCase))
+                    var v1 = DeviceManager.GetDeviceIdVariants(d.DeviceId);
+                    for (int i = 0; i < v1.Count; i++) existingIds.Add(v1[i]);
+
+                    if (!string.IsNullOrEmpty(d.HardwareFingerprint))
                     {
-                        existingIds.Add(RazerDeviceHelper.NormalizeRazerDeviceId(d.DeviceId));
+                        existingIds.Add(d.HardwareFingerprint);
+                        var v2 = DeviceManager.GetDeviceIdVariants(d.HardwareFingerprint);
+                        for (int i = 0; i < v2.Count; i++) existingIds.Add(v2[i]);
                     }
                 }
             }
@@ -260,10 +267,25 @@ namespace RazerBatteryTray
 
             var item = scannedList[e.Index];
             bool isSel = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
-            bool already = existingIds.Contains(item.DeviceId) || 
-                           (!string.IsNullOrEmpty(item.HardwareFingerprint) && existingIds.Contains(item.HardwareFingerprint)) ||
-                           (item.DeviceId.StartsWith("Razer:1532:", StringComparison.OrdinalIgnoreCase) && 
-                            existingIds.Contains(RazerDeviceHelper.NormalizeRazerDeviceId(item.DeviceId)));
+            bool isHidden = DeviceManager.IsDeviceHidden(item.DeviceId) || 
+                            (!string.IsNullOrEmpty(item.HardwareFingerprint) && DeviceManager.IsDeviceHidden(item.HardwareFingerprint));
+            bool already = false;
+            if (!isHidden)
+            {
+                var vList = DeviceManager.GetDeviceIdVariants(item.DeviceId);
+                if (!string.IsNullOrEmpty(item.HardwareFingerprint))
+                {
+                    vList.AddRange(DeviceManager.GetDeviceIdVariants(item.HardwareFingerprint));
+                }
+                for (int vi = 0; vi < vList.Count; vi++)
+                {
+                    if (existingIds.Contains(vList[vi]))
+                    {
+                        already = true;
+                        break;
+                    }
+                }
+            }
 
             // Background fill
             using (var bgBrush = new SolidBrush(Color.FromArgb(18, 19, 23)))
@@ -508,13 +530,112 @@ namespace RazerBatteryTray
 
 
 
+                // 2.56 Scan Valkyrie Devices (2.4G / USB)
+                try
+                {
+                    var vkList = ValkyrieDeviceHelper.QueryAllValkyrieDevices();
+                    if (vkList != null)
+                    {
+                        foreach (var vk in vkList)
+                        {
+                            if (vk != null && (vk.IsConnected || vk.IsDonglePresent))
+                            {
+                                if (!tempConfigs.Exists(c => c.DeviceId == vk.DeviceId || (!string.IsNullOrEmpty(c.HardwareFingerprint) && c.HardwareFingerprint == vk.HardwareFingerprint)))
+                                {
+                                    var cfg = new CustomDeviceConfig
+                                    {
+                                        DeviceId = vk.DeviceId,
+                                        OriginalName = vk.DeviceName,
+                                        CustomName = resolveCustomName(vk.DeviceId, vk.DisplayName, vk.DeviceName),
+                                        Category = resolveCategory(vk.DeviceId, vk.Category),
+                                        Transport = vk.Transport ?? "2.4G 无线",
+                                        CachedBattery = vk.BatteryPercent,
+                                        HardwareFingerprint = vk.HardwareFingerprint ?? vk.DeviceId
+                                    };
+                                    tempConfigs.Add(cfg);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { }
+
+                // 2.57 Scan Universal Gaming Devices (OpenMouse / All-in-One: Lamzu, Pulsar, ATK, Attack Shark, etc.)
+                try
+                {
+                    var gamingList = UniversalGamingDeviceHelper.QueryAllGamingDevices();
+                    if (gamingList != null)
+                    {
+                        foreach (var dev in gamingList)
+                        {
+                            if (dev != null && (dev.IsConnected || dev.IsDonglePresent))
+                            {
+                                if (!tempConfigs.Exists(c => c.DeviceId == dev.DeviceId || (!string.IsNullOrEmpty(c.HardwareFingerprint) && c.HardwareFingerprint == dev.HardwareFingerprint)))
+                                {
+                                    var cfg = new CustomDeviceConfig
+                                    {
+                                        DeviceId = dev.DeviceId,
+                                        OriginalName = dev.DeviceName,
+                                        CustomName = resolveCustomName(dev.DeviceId, dev.DisplayName, dev.DeviceName),
+                                        Category = resolveCategory(dev.DeviceId, dev.Category),
+                                        Transport = dev.Transport ?? "2.4G 无线",
+                                        CachedBattery = dev.BatteryPercent,
+                                        HardwareFingerprint = dev.HardwareFingerprint ?? dev.DeviceId
+                                    };
+                                    tempConfigs.Add(cfg);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { }
+
+                // 2.58 Scan Apple & Beats Devices
+                try
+                {
+                    var appleList = AppleDeviceHelper.QueryAllAppleDevices();
+                    if (appleList != null)
+                    {
+                        foreach (var dev in appleList)
+                        {
+                            if (dev != null && (dev.IsConnected || dev.IsDonglePresent))
+                            {
+                                if (!tempConfigs.Exists(c => c.DeviceId == dev.DeviceId || (!string.IsNullOrEmpty(c.HardwareFingerprint) && c.HardwareFingerprint == dev.HardwareFingerprint)))
+                                {
+                                    var cfg = new CustomDeviceConfig
+                                    {
+                                        DeviceId = dev.DeviceId,
+                                        OriginalName = dev.DeviceName,
+                                        CustomName = resolveCustomName(dev.DeviceId, dev.DisplayName, dev.DeviceName),
+                                        Category = resolveCategory(dev.DeviceId, dev.Category),
+                                        Transport = dev.Transport ?? "蓝牙",
+                                        CachedBattery = dev.BatteryPercent,
+                                        HardwareFingerprint = dev.HardwareFingerprint ?? dev.DeviceId
+                                    };
+                                    tempConfigs.Add(cfg);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { }
+
                 // 2.6 Scan Generic HID Mice & Peripherals (2.4G / USB)
                 try
                 {
                     var genMice = GenericHidHelper.ScanGenericHidMice(existingIds);
                     foreach (var gm in genMice)
                     {
-                        tempConfigs.Add(gm);
+                        if (gm != null)
+                        {
+                            string gmKey = gm.DeviceId != null && gm.DeviceId.StartsWith("HID:") ? gm.DeviceId.Substring(4) : gm.DeviceId;
+                            bool dup = tempConfigs.Exists(c => (c.DeviceId != null && c.DeviceId.IndexOf(gmKey, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                                                               (c.HardwareFingerprint != null && c.HardwareFingerprint.IndexOf(gmKey, StringComparison.OrdinalIgnoreCase) >= 0));
+                            if (!dup)
+                            {
+                                tempConfigs.Add(gm);
+                            }
+                        }
                     }
                 }
                 catch { }
@@ -584,10 +705,25 @@ namespace RazerBatteryTray
             if (idx >= 0 && idx < scannedList.Count)
             {
                 var item = scannedList[idx];
-                bool already = existingIds.Contains(item.DeviceId) || 
-                               (!string.IsNullOrEmpty(item.HardwareFingerprint) && existingIds.Contains(item.HardwareFingerprint)) ||
-                               (item.DeviceId.StartsWith("Razer:1532:", StringComparison.OrdinalIgnoreCase) && 
-                                existingIds.Contains(RazerDeviceHelper.NormalizeRazerDeviceId(item.DeviceId)));
+                bool isHidden = DeviceManager.IsDeviceHidden(item.DeviceId) || 
+                                (!string.IsNullOrEmpty(item.HardwareFingerprint) && DeviceManager.IsDeviceHidden(item.HardwareFingerprint));
+                bool already = false;
+                if (!isHidden)
+                {
+                    var vList = DeviceManager.GetDeviceIdVariants(item.DeviceId);
+                    if (!string.IsNullOrEmpty(item.HardwareFingerprint))
+                    {
+                        vList.AddRange(DeviceManager.GetDeviceIdVariants(item.HardwareFingerprint));
+                    }
+                    for (int vi = 0; vi < vList.Count; vi++)
+                    {
+                        if (existingIds.Contains(vList[vi]))
+                        {
+                            already = true;
+                            break;
+                        }
+                    }
+                }
 
                 txtCustomName.Text = !string.IsNullOrEmpty(item.CustomName) ? item.CustomName : item.OriginalName;
                 if (item.Category == DeviceCategory.Mouse) cmbCategory.SelectedIndex = 0;

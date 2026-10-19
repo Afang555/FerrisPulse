@@ -46,9 +46,9 @@ namespace RazerBatteryTray
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         }
 
-        protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); isHovered = true; Invalidate(); }
-        protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); isHovered = false; Invalidate(); }
-        protected override void OnClick(EventArgs e) { Checked = !Checked; base.OnClick(e); }
+        protected override void OnMouseEnter(EventArgs e) { if (!Enabled) return; base.OnMouseEnter(e); isHovered = true; Invalidate(); }
+        protected override void OnMouseLeave(EventArgs e) { if (!Enabled) return; base.OnMouseLeave(e); isHovered = false; Invalidate(); }
+        protected override void OnClick(EventArgs e) { if (!Enabled) return; Checked = !Checked; base.OnClick(e); }
 
         protected override void OnPaint(PaintEventArgs pevent)
         {
@@ -64,8 +64,22 @@ namespace RazerBatteryTray
             int boxY = (Height - boxSize) / 2;
             Rectangle boxRect = new Rectangle(1, boxY, boxSize, boxSize);
 
-            Color boxBg = isChecked ? (isHovered ? Color.FromArgb(0, 230, 118) : Color.FromArgb(0, 200, 83)) : (isHovered ? Color.FromArgb(38, 42, 54) : Color.FromArgb(28, 30, 38));
-            Color boxBorder = isChecked ? Color.FromArgb(0, 230, 118) : (isHovered ? Color.FromArgb(90, 98, 120) : Color.FromArgb(58, 63, 78));
+            Color boxBg;
+            Color boxBorder;
+            Color textCol;
+
+            if (!Enabled)
+            {
+                boxBg = isChecked ? Color.FromArgb(20, 36, 26) : Color.FromArgb(22, 24, 30);
+                boxBorder = isChecked ? Color.FromArgb(35, 75, 45) : Color.FromArgb(36, 40, 48);
+                textCol = Color.FromArgb(100, 108, 122);
+            }
+            else
+            {
+                boxBg = isChecked ? (isHovered ? Color.FromArgb(0, 230, 118) : Color.FromArgb(0, 200, 83)) : (isHovered ? Color.FromArgb(38, 42, 54) : Color.FromArgb(28, 30, 38));
+                boxBorder = isChecked ? Color.FromArgb(0, 230, 118) : (isHovered ? Color.FromArgb(90, 98, 120) : Color.FromArgb(58, 63, 78));
+                textCol = isHovered ? Color.White : (ForeColor != Control.DefaultForeColor && ForeColor != Color.Empty ? ForeColor : Color.FromArgb(220, 226, 238));
+            }
 
             using (GraphicsPath path = RoundedCard.GetRoundedRectangle(boxRect, 4))
             {
@@ -81,7 +95,8 @@ namespace RazerBatteryTray
 
             if (isChecked)
             {
-                using (Pen checkPen = new Pen(Color.FromArgb(10, 24, 15), 2.0f))
+                Color checkPenColor = !Enabled ? Color.FromArgb(70, 120, 85) : Color.FromArgb(10, 24, 15);
+                using (Pen checkPen = new Pen(checkPenColor, 2.0f))
                 {
                     checkPen.StartCap = LineCap.Round;
                     checkPen.EndCap = LineCap.Round;
@@ -97,7 +112,6 @@ namespace RazerBatteryTray
 
             int textX = boxRect.Right + 8;
             Rectangle textRect = new Rectangle(textX, 0, Width - textX, Height);
-            Color textCol = isHovered ? Color.White : Color.FromArgb(220, 226, 238);
             TextRenderer.DrawText(g, Text, Font, textRect, textCol,
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
         }

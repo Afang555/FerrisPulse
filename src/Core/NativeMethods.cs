@@ -162,6 +162,103 @@ namespace RazerBatteryTray
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         public static extern bool DestroyIcon(IntPtr handle);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool AllowSetForegroundWindow(uint dwProcessId);
+
+        public const uint ASFW_ANY = unchecked((uint)-1);
+
+        [DllImport("user32.dll")]
+        public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
+        public static extern bool IsWindowVisible(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
+        public static extern bool BringWindowToTop(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+        [DllImport("kernel32.dll")]
+        public static extern uint GetCurrentThreadId();
+
+        [DllImport("user32.dll")]
+        public static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool ChangeWindowMessageFilterEx(IntPtr hWnd, uint message, uint action, IntPtr pChangeFilterStruct);
+
+        public const int SW_HIDE = 0;
+        public const int SW_SHOWNORMAL = 1;
+        public const int SW_SHOWMINIMIZED = 2;
+        public const int SW_MAXIMIZE = 3;
+        public const int SW_SHOW = 5;
+        public const int SW_RESTORE = 9;
+
+        public const uint MSGFLT_RESET = 0;
+        public const uint MSGFLT_ALLOW = 1;
+        public const uint MSGFLT_DISALLOW = 2;
+
+        [DllImport("user32.dll")]
+        public static extern bool IsIconic(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern bool AnimateWindow(IntPtr hWnd, int dwTime, int dwFlags);
+
+        public const int AW_HOR_POSITIVE = 0x00000001;
+        public const int AW_HOR_NEGATIVE = 0x00000002;
+        public const int AW_VER_POSITIVE = 0x00000004;
+        public const int AW_VER_NEGATIVE = 0x00000008;
+        public const int AW_CENTER       = 0x00000010;
+        public const int AW_HIDE         = 0x00010000;
+        public const int AW_ACTIVATE     = 0x00020000;
+        public const int AW_SLIDE        = 0x00040000;
+        public const int AW_BLEND        = 0x00080000;
+
+        /// <summary>
+        /// 穿透 Windows 前台防抢焦点机制 (Focus Stealing Prevention)，强制将指定窗口置于桌面前台并获取输入焦点
+        /// </summary>
+        public static void ForceForegroundWindow(IntPtr hWnd)
+        {
+            if (hWnd == IntPtr.Zero) return;
+            try
+            {
+                if (IsIconic(hWnd))
+                {
+                    ShowWindow(hWnd, SW_RESTORE);
+                }
+                else
+                {
+                    ShowWindow(hWnd, SW_SHOW);
+                }
+
+                IntPtr fgWnd = GetForegroundWindow();
+                uint fgPid = 0;
+                uint fgThreadId = GetWindowThreadProcessId(fgWnd, out fgPid);
+                uint curThreadId = GetCurrentThreadId();
+
+                if (fgThreadId != 0 && fgThreadId != curThreadId)
+                {
+                    AttachThreadInput(curThreadId, fgThreadId, true);
+                    SetForegroundWindow(hWnd);
+                    BringWindowToTop(hWnd);
+                    AttachThreadInput(curThreadId, fgThreadId, false);
+                }
+                else
+                {
+                    SetForegroundWindow(hWnd);
+                    BringWindowToTop(hWnd);
+                }
+            }
+            catch { }
+        }
+
         // ==================== Shell User Notification State ====================
         public const int QUNS_NOT_PRESENT = 1;
         public const int QUNS_BUSY = 2;

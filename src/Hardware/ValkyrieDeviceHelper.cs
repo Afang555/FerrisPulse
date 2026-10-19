@@ -32,6 +32,9 @@ namespace RazerBatteryTray
         public const int OemVid1 = 0x3151;    // 融渊 / 代工方案 VID (12625)
         public const int OemVid2 = 0x347A;    // 代工方案 VID (13434)
 
+        private const uint GENERIC_READ = 0x80000000;
+        private const uint GENERIC_WRITE = 0x40000000;
+
         public static int CachedKbBattery = -1;
         public static bool CachedKbOnline = false;
         public static string CachedKbName = "VK 99 Max V2";
@@ -57,20 +60,23 @@ namespace RazerBatteryTray
         {
             if (string.IsNullOrEmpty(identifier)) return false;
             string lower = identifier.ToLowerInvariant();
-            if (lower.Contains("vid_374a") || lower.Contains("374a:") || lower.Contains("valkyrie") || lower.Contains("vkms"))
+            if (lower.Contains("vid_374a") || lower.Contains("374a:") || lower.Contains("valkyrie") || lower.Contains("vkms") || lower.Contains("vk_"))
             {
                 return true;
             }
 
-            // 代工接收器与键盘专用识别
+            // 代工专用识别码 (MicLink / mlzn OEM 广泛用于瓦尔基里全系 VK 键盘)
             if (lower.Contains("vid_3151") || lower.Contains("3151:"))
             {
-                if (lower.Contains("pid_5007") || lower.Contains("pid_5020") || lower.Contains("pid_503f") ||
-                    lower.Contains("pid_5040") || lower.Contains("pid_504b") || lower.Contains("5007") ||
-                    lower.Contains("5020") || lower.Contains("503f") || lower.Contains("5040") || lower.Contains("504b"))
-                {
-                    return true;
-                }
+                return true;
+            }
+
+            // 常见 OEM 固件型号匹配
+            if (lower.Contains("vk99") || lower.Contains("vk87") || lower.Contains("vk75") || lower.Contains("vk108") ||
+                lower.Contains("mag68") || lower.Contains("mag75") || lower.Contains("mag87") || lower.Contains("mecha75") ||
+                lower.Contains("cyber68") || lower.Contains("nb68") || lower.Contains("nb80"))
+            {
+                return true;
             }
 
             return false;
@@ -700,14 +706,40 @@ namespace RazerBatteryTray
                             {
                                 seenPaths.Add(devicePath);
 
+                                // 必须优先使用 0 查询权限打开句柄！Windows 对键盘 HID 集合强制实施系统级排他读独占锁 (Access Denied 5)
+                                // 使用 0 (FILE_READ_ATTRIBUTES) 权限完全免疫独占锁冲突，且在 Win32 HID 下完全允许 HidD_GetFeature 与 HidD_SetFeature 查询
                                 IntPtr handle = RazerDeviceHelper.CreateFile(
                                     devicePath,
-                                    0, // 查询句柄，无需独占读写权限
+                                    0,
                                     RazerDeviceHelper.FILE_SHARE_READ | RazerDeviceHelper.FILE_SHARE_WRITE,
                                     IntPtr.Zero,
                                     RazerDeviceHelper.OPEN_EXISTING,
                                     0,
                                     IntPtr.Zero);
+
+                                if (handle == IntPtr.Zero || handle.ToInt64() == -1)
+                                {
+                                    handle = RazerDeviceHelper.CreateFile(
+                                        devicePath,
+                                        GENERIC_READ | GENERIC_WRITE,
+                                        RazerDeviceHelper.FILE_SHARE_READ | RazerDeviceHelper.FILE_SHARE_WRITE,
+                                        IntPtr.Zero,
+                                        RazerDeviceHelper.OPEN_EXISTING,
+                                        0,
+                                        IntPtr.Zero);
+                                }
+
+                                if (handle == IntPtr.Zero || handle.ToInt64() == -1)
+                                {
+                                    handle = RazerDeviceHelper.CreateFile(
+                                        devicePath,
+                                        GENERIC_WRITE,
+                                        RazerDeviceHelper.FILE_SHARE_READ | RazerDeviceHelper.FILE_SHARE_WRITE,
+                                        IntPtr.Zero,
+                                        RazerDeviceHelper.OPEN_EXISTING,
+                                        0,
+                                        IntPtr.Zero);
+                                }
 
                                 if (handle != IntPtr.Zero && handle.ToInt64() != -1)
                                 {
@@ -720,8 +752,17 @@ namespace RazerBatteryTray
                                         StringBuilder sbProd = new StringBuilder(256);
                                         string prodStr = RazerDeviceHelper.HidD_GetProductString(handle, sbProd, sbProd.Capacity) ? sbProd.ToString().Trim() : "";
 
-                                        // 发送瓦尔基里专属 0xF7 报文查询电量与状态
+                                        // 发送瓦尔基里专属 0xF7 报文查询电量与状态，失败时尝试 0xF5 与 0x04 固件
                                         byte[] rx = SendValkyrieCommand(handle, 0xF7, 10);
+                                        if (rx == null || rx.Length < 7)
+                                        {
+                                            rx = SendValkyrieCommand(handle, 0xF5, 10);
+                                        }
+                                        if (rx == null || rx.Length < 7)
+                                        {
+                                            rx = SendValkyrieCommand(handle, 0x04, 10);
+                                        }
+
                                         if (rx != null && rx.Length >= 7)
                                         {
                                             int baseOffset = 0;
@@ -737,15 +778,16 @@ namespace RazerBatteryTray
                                             int isCanRead = rx[baseOffset + 0];
                                             int kbBatt = rx[baseOffset + 1];
                                             int mouseBatt = rx[baseOffset + 2];
-                                            bool kbOnline = (rx[baseOffset + 3] == 0);
-                                            bool mouseOnline = (rx[baseOffset + 4] == 0);
+                                            bool kbOnline = (rx[baseOffset + 3] == 0) || (kbBatt > 0);
+                                            bool mouseOnline = (rx[baseOffset + 4] == 0) || (mouseBatt > 0);
                                             int devType = rx[baseOffset + 6]; // 1: 键盘, 2: 鼠标, 3: 键鼠双模
 
-                                            // 1. 处理键盘设备
-                                            if (devType == 1 || devType == 3)
+                                            // 1. 处理键盘设备 (devType 包含 1, 3, 或当识别出有效键盘电量时的自适应识别)
+                                            if (devType == 1 || devType == 3 || (devType == 0 && kbBatt > 0 && kbBatt <= 100))
                                             {
                                                 string kbModel = GetModelName(attr.VendorID, attr.ProductID, prodStr, DeviceCategory.Keyboard);
                                                 CachedKbName = kbModel;
+                                                CachedKbOnline = kbOnline;
 
                                                 MouseBatteryInfo kbInfo = new MouseBatteryInfo();
                                                 kbInfo.DeviceId = string.Format("Valkyrie:{0:X4}:{1:X4}:KB", attr.VendorID, attr.ProductID);

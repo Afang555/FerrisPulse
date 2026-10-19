@@ -24,6 +24,7 @@ namespace RazerBatteryTray
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
+        private const int DWMWA_TRANSITIONS_FORCEDISABLED = 3;
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
         private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
@@ -38,6 +39,9 @@ namespace RazerBatteryTray
         {
             try
             {
+                int enableTransitions = 0; // 0 = 允许 Windows 原生 DWM 窗口动画 (不禁用)
+                DwmSetWindowAttribute(hWnd, DWMWA_TRANSITIONS_FORCEDISABLED, ref enableTransitions, sizeof(int));
+
                 int trueVal = 1;
                 DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref trueVal, sizeof(int));
                 DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, ref trueVal, sizeof(int));

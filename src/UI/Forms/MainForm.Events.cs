@@ -21,8 +21,25 @@ namespace RazerBatteryTray
     public partial class MainForm : Form
     {
 
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            // 彻底杜绝 Windows 默认浅色/白色笔刷擦除闪烁，始终以暗黑底色填充背景
+            using (SolidBrush b = new SolidBrush(this.BackColor))
+            {
+                e.Graphics.FillRectangle(b, e.ClipRectangle);
+            }
+        }
+
         protected override void WndProc(ref Message m)
         {
+            const int WM_ERASEBKGND = 0x0014;
+            if (m.Msg == WM_ERASEBKGND)
+            {
+                // 拦截 WM_ERASEBKGND，返回 1 (已由系统擦除)，移交双缓冲绘制，彻底杜绝白框闪烁
+                m.Result = (IntPtr)1;
+                return;
+            }
+
             if (m.Msg == NativeMethods.WM_TASKBARCREATED && NativeMethods.WM_TASKBARCREATED != 0)
             {
                 ReinitializeTrayIcon();
@@ -216,6 +233,11 @@ namespace RazerBatteryTray
         {
             try
             {
+                if (hDevNotify != IntPtr.Zero)
+                {
+                    try { UnregisterDeviceNotification(hDevNotify); } catch { }
+                    hDevNotify = IntPtr.Zero;
+                }
                 Guid hidGuid;
                 RazerDeviceHelper.HidD_GetHidGuid(out hidGuid);
 

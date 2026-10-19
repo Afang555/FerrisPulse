@@ -18,6 +18,7 @@ namespace RazerBatteryTray
     public class RazerDeviceHardwareState
     {
         public string DeviceId;
+        public int Pid;
         public string DevicePath;
         public int ReportLength;
         public bool IsPrepended;

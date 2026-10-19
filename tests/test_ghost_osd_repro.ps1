@@ -3,7 +3,8 @@
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $root = Split-Path -Parent $currentDir
 $exePath = Join-Path $root "FerrisPulse.exe"
-$asm = [System.Reflection.Assembly]::LoadFrom($exePath)
+$rawBytes = [System.IO.File]::ReadAllBytes($exePath)
+$asm = [System.Reflection.Assembly]::Load($rawBytes)
 $rdh = $asm.GetType('RazerBatteryTray.RazerDeviceHelper')
 
 $mQuery = $rdh.GetMethod('QueryAllRazerDevices', [System.Reflection.BindingFlags]'Static,Public')
@@ -19,8 +20,8 @@ $lastMonitoredRazerDpis = @{}
 $lastMonitoredRazerStages = @{}
 $ghostTriggers = 0
 
-Write-Host "Running 400 iterations of FastQueryDpi while idle..."
-for ($i = 0; $i -lt 400; $i++) {
+Write-Host "Running 10 fast iterations of FastQueryDpi while idle..."
+for ($i = 0; $i -lt 10; $i++) {
     $invokeArgs = [object[]]@([int]0, [int]0, [int]0, "Razer:1532:00BE")
     $ok = $mFast.Invoke($null, $invokeArgs)
     if ($ok) {

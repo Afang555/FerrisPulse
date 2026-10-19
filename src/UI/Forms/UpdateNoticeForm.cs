@@ -345,13 +345,18 @@ namespace RazerBatteryTray
 
                 for (int i = 0; i < displayItems.Count; i++)
                 {
-                    string itemText = "•  " + displayItems[i];
+                    bool isSectionHeader = displayItems[i].StartsWith("一、") || displayItems[i].StartsWith("二、") || displayItems[i].StartsWith("三、");
+                    string itemText = isSectionHeader ? displayItems[i] : ("•  " + displayItems[i]);
                     Label lblItem = new Label();
                     lblItem.Text = itemText;
-                    lblItem.Font = new Font("Microsoft YaHei UI", 9F);
-                    lblItem.ForeColor = Color.FromArgb(190, 198, 215);
+                    lblItem.Font = isSectionHeader 
+                        ? new Font("Microsoft YaHei UI", 9.2F, FontStyle.Bold)
+                        : new Font("Microsoft YaHei UI", 9F);
+                    lblItem.ForeColor = isSectionHeader 
+                        ? Color.FromArgb(240, 245, 255)
+                        : Color.FromArgb(190, 198, 215);
                     lblItem.BackColor = Color.Transparent;
-                    lblItem.Location = new Point(4, logItemY);
+                    lblItem.Location = new Point(4, isSectionHeader && i > 0 ? (logItemY + 6) : logItemY);
                     lblItem.Width = itemWidth;
 
                     // 计算文本实际换行所需高度，自适应排版绝不出现横向白滚动条

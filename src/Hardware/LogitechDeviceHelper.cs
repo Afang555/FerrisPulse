@@ -2,7 +2,7 @@
 // 模块名称: LogitechDeviceHelper.cs
 // 所属区域: Hardware (硬件驱动层)
 // 核心职责:
-//   罗技 (Logitech) HID++ 1.0/2.0 私有协议通信与电量检测实现
+//   罗技 (Logitech) HID++ 1.0/2.0 私有协议通信、电量检测、DPI调节 (Feature 0x2201/0x2202 支持XY轴独立) 与回报率设置 (Feature 0x8060/0x8061 最高8000Hz) 实现
 // 依赖关系: NativeMethods.cs, MouseBatteryInfo.cs
 //
 // ⚠️ AI 维护准则 (AI MAINTENANCE DIRECTIVE - DO NOT REMOVE) ⚠️:
@@ -140,9 +140,32 @@ public static class LogitechDeviceHelper
     private const uint FILE_FLAG_OVERLAPPED = 0x40000000;
     private const uint WAIT_OBJECT_0 = 0;
 
+    public class LogitechEndpoint
+    {
+        public string DeviceId;
+        public string DevicePath;
+        public byte DevIndex;
+        public int InputReportLength;
+        public int OutputReportLength;
+        public int CurrentDpi;
+        public int CurrentDpiY;
+        public int PollingRate;
+        public byte DpiFeatureIndex;
+        public byte ExtDpiFeatureIndex;
+        public byte RateFeatureIndex;
+        public byte ExtRateFeatureIndex;
+        public int[] SupportedRates;
+        public DateTime LastSeen;
+    }
+
+    private static Dictionary<string, LogitechEndpoint> activeEndpoints = new Dictionary<string, LogitechEndpoint>(StringComparer.OrdinalIgnoreCase);
+
     public static int CachedBatteryPercent = -1;
     public static bool CachedIsCharging = false;
     public static string CachedDeviceName = "罗技无线游戏鼠标";
+    public static int CachedDpi = 1600;
+    public static int CachedDpiY = 1600;
+    public static int CachedPollingRate = 1000;
     public static DateTime CachedLastUpdated = DateTime.MinValue;
     public static bool HasValidHardwareReading = false;
     private static Dictionary<string, int> deviceBatteryCache = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -175,6 +198,15 @@ public static class LogitechDeviceHelper
                     var chg = key.GetValue("IsCharging");
                     if (chg != null) CachedIsCharging = (Convert.ToInt32(chg) != 0);
 
+                    var dpiObj = key.GetValue("Dpi");
+                    if (dpiObj != null) CachedDpi = Convert.ToInt32(dpiObj);
+
+                    var dpiYObj = key.GetValue("DpiY");
+                    if (dpiYObj != null) CachedDpiY = Convert.ToInt32(dpiYObj);
+
+                    var pollObj = key.GetValue("PollingRate");
+                    if (pollObj != null) CachedPollingRate = Convert.ToInt32(pollObj);
+
                     var updatedStr = key.GetValue("LastUpdated") as string;
                     if (!string.IsNullOrEmpty(updatedStr))
                     {
@@ -202,6 +234,9 @@ public static class LogitechDeviceHelper
                     }
                     if (!string.IsNullOrEmpty(CachedDeviceName)) key.SetValue("DeviceName", CachedDeviceName);
                     key.SetValue("IsCharging", CachedIsCharging ? 1 : 0);
+                    if (CachedDpi > 0) key.SetValue("Dpi", CachedDpi);
+                    if (CachedDpiY > 0) key.SetValue("DpiY", CachedDpiY);
+                    if (CachedPollingRate > 0) key.SetValue("PollingRate", CachedPollingRate);
                     if (CachedLastUpdated != DateTime.MinValue) key.SetValue("LastUpdated", CachedLastUpdated.ToString("o"));
                 }
             }
@@ -294,17 +329,44 @@ public static class LogitechDeviceHelper
         // 1. Specific PID database
         switch (pid)
         {
+            // --- 罗技 G PRO / GPW 系列全系硬件矩阵 (涵盖 1代 至 5代) ---
+            // GPW 5代 (GPW 5 / PRO X3 SUPERSTRIKE / 雪豹 / Ultra - HITS电磁微动, 8K, 48000DPI)
+            case 0x40BD:
+            case 0x40A9: return "Logitech G PRO X3 SUPERSTRIKE (GPW 5代)";
+            case 0xC0A9:
+            case 0xC0A8: return "Logitech G PRO X3 SUPERSTRIKE (GPW 5代 有线模式)";
+            // GPW 4代 (GPW 4 / PRO X SUPERLIGHT 2C / 小手版 / 朱雀)
+            case 0x40B5: return "Logitech G PRO X SUPERLIGHT 2C (GPW 4代)";
+            case 0xC0B5: return "Logitech G PRO X SUPERLIGHT 2C (GPW 4代 有线模式)";
+            // GPW 3代 (GPX 2 / PRO X SUPERLIGHT 2 / DEX)
             case 0xC547:
             case 0x4093: return "Logitech G PRO X SUPERLIGHT 2";
+            case 0xC098: return "Logitech G PRO X SUPERLIGHT 2 (有线模式)";
+            case 0x4099: return "Logitech G PRO X SUPERLIGHT 2 DEX";
+            case 0xC099: return "Logitech G PRO X SUPERLIGHT 2 DEX (有线模式)";
+            case 0x40A4: return "Logitech G PRO 2 LIGHTSPEED";
+            case 0xC0A4: return "Logitech G PRO 2 LIGHTSPEED (有线模式)";
+            // GPW 2代 (GPX / PRO X SUPERLIGHT)
             case 0x4092:
             case 0xC094: return "Logitech G PRO X SUPERLIGHT";
+            // GPW 1代 (经典 GPW / LOL 联名)
             case 0x4079:
             case 0xC088: return "Logitech G PRO Wireless (GPW)";
+            case 0x408D: return "Logitech G PRO Wireless (英雄联盟联名款)";
+            case 0x407A:
+            case 0xC08C: return "Logitech G PRO HERO 游戏鼠标";
+            case 0xC076: return "Logitech G PRO 游戏鼠标 (经典3366版)";
             case 0x4087:
             case 0xC08D: return "Logitech G502 LIGHTSPEED";
             case 0x408E:
             case 0xC096: return "Logitech G502 X PLUS / LIGHTSPEED";
+            case 0xC095: return "Logitech G502 X (有线版)";
+            case 0xC08B: return "Logitech G502 HERO (有线版)";
+            case 0xC07D: return "Logitech G502 Proteus Spectrum";
+            case 0xC084: return "Logitech G203 / G102 Prodigy";
+            case 0xC092: return "Logitech G203 / G102 LIGHTSYNC";
             case 0x4074: return "Logitech G304 / G305 LIGHTSPEED";
+            case 0x409E: return "Logitech G309 LIGHTSPEED";
             case 0x4070: return "Logitech G703 LIGHTSPEED (HERO)";
             case 0x4071: return "Logitech G903 LIGHTSPEED (HERO)";
             case 0x406E: return "Logitech G604 LIGHTSPEED";
@@ -317,9 +379,12 @@ public static class LogitechDeviceHelper
             case 0x408A: return "Logitech MX Keys Mini";
             case 0x4082: return "Logitech G913 TKL 机械键盘";
             case 0x4086: return "Logitech G913 机械键盘";
+            case 0x40A1: return "Logitech G915 X LIGHTSPEED 机械键盘";
+            case 0x4098: return "Logitech G515 LIGHTSPEED TKL 机械键盘";
             case 0x409B: return "Logitech G PRO X 60 游戏键盘";
             case 0x4088: return "Logitech G733 LIGHTSPEED 耳机";
             case 0x4097: return "Logitech G PRO X 2 LIGHTSPEED 耳机";
+            case 0x408C: return "Logitech G PRO X Wireless 游戏耳机";
             case 0x4085: return "Logitech G435 无线耳机";
             case 0x4080: return "Logitech G533 无线耳机";
             case 0x407B: return "Logitech G935 无线耳机";
@@ -338,9 +403,14 @@ public static class LogitechDeviceHelper
         }
 
         // Receiver defaults
+        if (pid == 0xC54F) return "Logitech G PRO X3 SUPERSTRIKE 8K 接收器";
         if (pid == 0xC547) return "Logitech G PRO X SUPERLIGHT 2 (Lightspeed)";
-        if (pid == 0xC539 || pid == 0xC53A) return "Logitech G 旗舰无线鼠标 (Lightspeed)";
-        if (pid == 0xC545) return "Logitech G502 X LIGHTSPEED";
+        if (pid == 0xC548) return "Logitech G PRO X SUPERLIGHT 2 4K/8K 接收器";
+        if (pid == 0xC539) return "Logitech Lightspeed 游戏无线接收器";
+        if (pid == 0xC53A) return "Logitech POWERPLAY 无线充电系统";
+        if (pid == 0xC545) return "Logitech G502 X LIGHTSPEED 接收器";
+        if (pid == 0xC52B) return "Logitech Unifying 优联接收器";
+        if (pid == 0xC542) return "Logitech Bolt 安全商业接收器";
 
         return "Logitech 罗技无线游戏外设";
     }
@@ -449,8 +519,11 @@ public static class LogitechDeviceHelper
                                                     try
                                                     {
                                                         // Check target device slots on this receiver/connection:
-                                                        // index 0xFF (wired), index 0x01 (paired wireless mouse)
-                                                        byte[] targetIndices = new byte[] { 0xFF, 0x01 };
+                                                        // index 0xFF (wired), index 0x01..0x06 (paired wireless mouse/keyboard on Lightspeed, Unifying, Bolt)
+                                                        byte[] targetIndices = (foundPid == 0xC52B || foundPid == 0xC542) 
+                                                            ? new byte[] { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 } 
+                                                            : new byte[] { 0xFF, 0x01, 0x02 };
+
                                                         foreach (byte devIdx in targetIndices)
                                                         {
                                                             bool deviceOnline = false;
@@ -486,6 +559,14 @@ public static class LogitechDeviceHelper
                                                             }
 
                                                             // 2. Discover Features if online
+                                                            int hardwareDpi = -1;
+                                                            int hardwareDpiY = -1;
+                                                            byte extDpiFeatIdx = 0;
+                                                            byte dpiFeatIdx = 0;
+                                                            byte extRateFeatIdx = 0;
+                                                            byte rateFeatIdx = 0;
+                                                            int detectedRate = 1000;
+                                                            int[] supportedRates = new int[] { 1000, 2000, 4000, 8000 };
                                                             if (deviceOnline)
                                                             {
                                                                 // Feature 0x0005: Device Name Type
@@ -610,12 +691,170 @@ public static class LogitechDeviceHelper
                                                                         }
                                                                     }
                                                                 }
+
+                                                                hardwareDpiY = -1;
+                                                                extDpiFeatIdx = 0;
+                                                                dpiFeatIdx = 0;
+                                                                extRateFeatIdx = 0;
+                                                                rateFeatIdx = 0;
+                                                                detectedRate = 1000;
+                                                                supportedRates = new int[] { 1000, 2000, 4000, 8000 };
+
+                                                                // Feature 0x2202: Extended Adjustable DPI (XY independent)
+                                                                byte[] txFeat2202 = new byte[20];
+                                                                txFeat2202[0] = 0x11;
+                                                                txFeat2202[1] = devIdx;
+                                                                txFeat2202[2] = 0x00;
+                                                                txFeat2202[3] = 0x00;
+                                                                txFeat2202[4] = 0x22;
+                                                                txFeat2202[5] = 0x02; // 0x2202
+                                                                byte[] rxFeat2202 = SendAndReceive(handle, hEvent, txFeat2202, caps.InputReportByteLength, 200);
+                                                                if (rxFeat2202 != null && rxFeat2202.Length >= 5 && rxFeat2202[4] > 0)
+                                                                {
+                                                                    extDpiFeatIdx = rxFeat2202[4];
+                                                                    // Func 5: read extended DPI (0x50)
+                                                                    byte[] txGetExtDpi = new byte[20];
+                                                                    txGetExtDpi[0] = 0x11;
+                                                                    txGetExtDpi[1] = devIdx;
+                                                                    txGetExtDpi[2] = extDpiFeatIdx;
+                                                                    txGetExtDpi[3] = 0x50; // Func 5: read
+                                                                    txGetExtDpi[4] = 0x00; // Sensor 0
+                                                                    byte[] rxGetExtDpi = SendAndReceive(handle, hEvent, txGetExtDpi, caps.InputReportByteLength, 200);
+                                                                    if (rxGetExtDpi != null && rxGetExtDpi.Length >= 9)
+                                                                    {
+                                                                        int dx = (rxGetExtDpi[5] << 8) | rxGetExtDpi[6];
+                                                                        int dy = (rxGetExtDpi[7] << 8) | rxGetExtDpi[8];
+                                                                        if (dx >= 50 && dx <= 50000) hardwareDpi = dx;
+                                                                        if (dy >= 50 && dy <= 50000) hardwareDpiY = dy;
+                                                                    }
+                                                                }
+
+                                                                // Feature 0x2201: Adjustable DPI (Unified)
+                                                                byte[] txFeat2201 = new byte[20];
+                                                                txFeat2201[0] = 0x11;
+                                                                txFeat2201[1] = devIdx;
+                                                                txFeat2201[2] = 0x00;
+                                                                txFeat2201[3] = 0x00;
+                                                                txFeat2201[4] = 0x22;
+                                                                txFeat2201[5] = 0x01; // 0x2201
+                                                                byte[] rxFeat2201 = SendAndReceive(handle, hEvent, txFeat2201, caps.InputReportByteLength, 200);
+                                                                if (rxFeat2201 != null && rxFeat2201.Length >= 5 && rxFeat2201[4] > 0)
+                                                                {
+                                                                    dpiFeatIdx = rxFeat2201[4];
+                                                                    if (hardwareDpi <= 0)
+                                                                    {
+                                                                        // Func 1: getSensorDpi (0x10)
+                                                                        byte[] txGetDpi = new byte[20];
+                                                                        txGetDpi[0] = 0x11;
+                                                                        txGetDpi[1] = devIdx;
+                                                                        txGetDpi[2] = dpiFeatIdx;
+                                                                        txGetDpi[3] = 0x10; // Func 1: getSensorDpi
+                                                                        txGetDpi[4] = 0x00; // Sensor 0
+                                                                        byte[] rxGetDpi = SendAndReceive(handle, hEvent, txGetDpi, caps.InputReportByteLength, 250);
+                                                                        if (rxGetDpi != null && rxGetDpi.Length >= 7)
+                                                                        {
+                                                                            int dVal = (rxGetDpi[5] << 8) | rxGetDpi[6];
+                                                                            if (dVal >= 50 && dVal <= 50000)
+                                                                            {
+                                                                                hardwareDpi = dVal;
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+
+                                                                // Feature 0x8061: Extended Adjustable Report Rate (GPX 2, GPW 5, modern 8K/4K/2K/1K)
+                                                                byte[] txFeat8061 = new byte[20];
+                                                                txFeat8061[0] = 0x11;
+                                                                txFeat8061[1] = devIdx;
+                                                                txFeat8061[2] = 0x00;
+                                                                txFeat8061[3] = 0x00;
+                                                                txFeat8061[4] = 0x80;
+                                                                txFeat8061[5] = 0x61; // 0x8061
+                                                                byte[] rxFeat8061 = SendAndReceive(handle, hEvent, txFeat8061, caps.InputReportByteLength, 200);
+                                                                if (rxFeat8061 != null && rxFeat8061.Length >= 5 && rxFeat8061[4] > 0)
+                                                                {
+                                                                    extRateFeatIdx = rxFeat8061[4];
+                                                                    // Func 2: getReportRate (0x20)
+                                                                    byte[] txGetRate = new byte[20];
+                                                                    txGetRate[0] = 0x11;
+                                                                    txGetRate[1] = devIdx;
+                                                                    txGetRate[2] = extRateFeatIdx;
+                                                                    txGetRate[3] = 0x20;
+                                                                    byte[] rxGetRate = SendAndReceive(handle, hEvent, txGetRate, caps.InputReportByteLength, 200);
+                                                                    if (rxGetRate != null && rxGetRate.Length >= 5)
+                                                                    {
+                                                                        int code = rxGetRate[4];
+                                                                        if (code == 6) detectedRate = 8000;
+                                                                        else if (code == 5) detectedRate = 4000;
+                                                                        else if (code == 4) detectedRate = 2000;
+                                                                        else if (code == 3) detectedRate = 1000;
+                                                                        else if (code == 2) detectedRate = 500;
+                                                                        else if (code == 1) detectedRate = 250;
+                                                                        else if (code == 0) detectedRate = 125;
+                                                                    }
+                                                                    supportedRates = new int[] { 125, 250, 500, 1000, 2000, 4000, 8000 };
+                                                                }
+                                                                else
+                                                                {
+                                                                    // Feature 0x8060: Standard Adjustable Report Rate (GPW 1, GPX 1, G502)
+                                                                    byte[] txFeat8060 = new byte[20];
+                                                                    txFeat8060[0] = 0x11;
+                                                                    txFeat8060[1] = devIdx;
+                                                                    txFeat8060[2] = 0x00;
+                                                                    txFeat8060[3] = 0x00;
+                                                                    txFeat8060[4] = 0x80;
+                                                                    txFeat8060[5] = 0x60; // 0x8060
+                                                                    byte[] rxFeat8060 = SendAndReceive(handle, hEvent, txFeat8060, caps.InputReportByteLength, 200);
+                                                                    if (rxFeat8060 != null && rxFeat8060.Length >= 5 && rxFeat8060[4] > 0)
+                                                                    {
+                                                                        rateFeatIdx = rxFeat8060[4];
+                                                                        // Func 1: getReportRate (0x10)
+                                                                        byte[] txGetRate = new byte[20];
+                                                                        txGetRate[0] = 0x11;
+                                                                        txGetRate[1] = devIdx;
+                                                                        txGetRate[2] = rateFeatIdx;
+                                                                        txGetRate[3] = 0x10;
+                                                                        byte[] rxGetRate = SendAndReceive(handle, hEvent, txGetRate, caps.InputReportByteLength, 200);
+                                                                        if (rxGetRate != null && rxGetRate.Length >= 5)
+                                                                        {
+                                                                            int ms = rxGetRate[4];
+                                                                            if (ms == 1) detectedRate = 1000;
+                                                                            else if (ms == 2) detectedRate = 500;
+                                                                            else if (ms == 4) detectedRate = 250;
+                                                                            else if (ms == 8) detectedRate = 125;
+                                                                        }
+                                                                        supportedRates = new int[] { 125, 250, 500, 1000 };
+                                                                    }
+                                                                }
                                                             }
 
                                                             // Determine Device Name and ID
                                                             string finalName = !string.IsNullOrEmpty(detectedName) ? detectedName : GetModelName(detectedPid, foundName);
                                                             DeviceCategory cat = DetectCategory(detectedPid, finalName);
                                                             string deviceId = "Logitech:" + foundVid.ToString("X4") + ":" + detectedPid.ToString("X4") + (devIdx != 0xFF ? (":" + devIdx) : "");
+
+                                                            // Register active endpoint for DPI and Polling Rate control
+                                                            if (deviceOnline)
+                                                            {
+                                                                LogitechEndpoint ep = new LogitechEndpoint
+                                                                {
+                                                                    DeviceId = deviceId,
+                                                                    DevicePath = devicePath,
+                                                                    DevIndex = devIdx,
+                                                                    InputReportLength = caps.InputReportByteLength,
+                                                                    OutputReportLength = caps.OutputReportByteLength,
+                                                                    CurrentDpi = (hardwareDpi > 0) ? hardwareDpi : CachedDpi,
+                                                                    CurrentDpiY = (hardwareDpiY > 0) ? hardwareDpiY : ((hardwareDpi > 0) ? hardwareDpi : CachedDpiY),
+                                                                    PollingRate = (detectedRate > 0) ? detectedRate : CachedPollingRate,
+                                                                    DpiFeatureIndex = dpiFeatIdx,
+                                                                    ExtDpiFeatureIndex = extDpiFeatIdx,
+                                                                    RateFeatureIndex = rateFeatIdx,
+                                                                    ExtRateFeatureIndex = extRateFeatIdx,
+                                                                    SupportedRates = supportedRates,
+                                                                    LastSeen = DateTime.Now
+                                                                };
+                                                                activeEndpoints[deviceId] = ep;
+                                                            }
 
                                                             // If device was online and battery read, update cache
                                                             if (batteryPercent >= 0)
@@ -635,11 +874,16 @@ public static class LogitechDeviceHelper
                                                             // Only add if device is online or if dongle is present
                                                             // For dongle receiver, even if mouse is sleeping, provide dongle standby status
                                                             bool isDongle = (foundPid == 0xC547 || foundPid == 0xC539 || foundPid == 0xC53A || 
-                                                                             foundPid == 0xC545 || foundPid == 0xC548 || foundPid == 0xC52B || 
-                                                                             foundPid == 0xC534 || foundPid == 0xC52F);
+                                                                             foundPid == 0xC545 || foundPid == 0xC548 || foundPid == 0xC54F || 
+                                                                             foundPid == 0xC52B || foundPid == 0xC534 || foundPid == 0xC52F || 
+                                                                             foundPid == 0xC542);
 
                                                             if (deviceOnline || isDongle)
                                                             {
+                                                                int finalDpiX = (hardwareDpi > 0) ? hardwareDpi : CachedDpi;
+                                                                int finalDpiY = (hardwareDpiY > 0) ? hardwareDpiY : finalDpiX;
+                                                                int finalRate = (detectedRate > 0) ? detectedRate : CachedPollingRate;
+
                                                                 MouseBatteryInfo info = new MouseBatteryInfo
                                                                 {
                                                                     DeviceId = deviceId,
@@ -656,15 +900,26 @@ public static class LogitechDeviceHelper
                                                                     ExactBatteryPercent = displayBattery,
                                                                     IsCharging = displayCharging,
                                                                     LastUpdated = (batteryPercent >= 0) ? DateTime.Now : (CachedLastUpdated != DateTime.MinValue ? CachedLastUpdated : DateTime.Now),
-                                                                    Dpi = 1600,
+                                                                    Dpi = finalDpiX,
+                                                                    DpiY = finalDpiY,
+                                                                    IsXyIndependent = (finalDpiY != finalDpiX),
                                                                     DpiStage = 2,
                                                                     DpiStageCount = 5,
                                                                     DpiStages = new int[] { 400, 800, 1600, 3200, 6400 },
-                                                                    PollingRate = 1000,
-                                                                    SupportedPollingRates = new int[] { 1000, 2000, 4000, 8000 }
+                                                                    DpiStagesY = new int[] { 400, 800, 1600, 3200, 6400 },
+                                                                    PollingRate = finalRate,
+                                                                    SupportedPollingRates = supportedRates
                                                                 };
-                                                                results.Add(info);
-                                                                break; // found active/valid paired slot
+
+                                                                if (deviceOnline)
+                                                                {
+                                                                    results.Add(info);
+                                                                    if (devIdx == 0xFF) break;
+                                                                }
+                                                                else if (isDongle && devIdx == 0x01 && results.Count == 0)
+                                                                {
+                                                                    results.Add(info);
+                                                                }
                                                             }
                                                         }
                                                     }
@@ -697,7 +952,263 @@ public static class LogitechDeviceHelper
         }
     }
 
-        public static MouseBatteryInfo QueryLogitechDeviceInfo(string deviceFingerprint = null)
+    private static LogitechEndpoint FindEndpoint(string targetDeviceId)
+    {
+        if (!string.IsNullOrEmpty(targetDeviceId))
+        {
+            LogitechEndpoint ep;
+            if (activeEndpoints.TryGetValue(targetDeviceId, out ep) && ep != null) return ep;
+        }
+        if (activeEndpoints.Count > 0)
+        {
+            foreach (var kvp in activeEndpoints)
+            {
+                if (kvp.Value != null) return kvp.Value;
+            }
+        }
+
+        QueryAllLogitechDevices();
+
+        if (!string.IsNullOrEmpty(targetDeviceId))
+        {
+            LogitechEndpoint ep;
+            if (activeEndpoints.TryGetValue(targetDeviceId, out ep) && ep != null) return ep;
+        }
+        foreach (var kvp in activeEndpoints)
+        {
+            if (kvp.Value != null) return kvp.Value;
+        }
+        return null;
+    }
+
+    public static bool SetLogitechDpi(int dpi, string targetDeviceId = null)
+    {
+        return SetLogitechDpi(dpi, dpi, targetDeviceId);
+    }
+
+    public static bool SetLogitechDpi(int dpiX, int dpiY, string targetDeviceId = null)
+    {
+        lock (hidLock)
+        {
+            LogitechEndpoint ep = FindEndpoint(targetDeviceId);
+            if (ep == null) return false;
+
+            IntPtr handle = CreateFile(
+                ep.DevicePath,
+                GENERIC_READ | GENERIC_WRITE,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                IntPtr.Zero,
+                OPEN_EXISTING,
+                FILE_FLAG_OVERLAPPED,
+                IntPtr.Zero);
+
+            if (handle == IntPtr.Zero || handle.ToInt64() == -1) return false;
+
+            IntPtr hEvent = CreateEvent(IntPtr.Zero, true, false, null);
+            if (hEvent == IntPtr.Zero)
+            {
+                CloseHandle(handle);
+                return false;
+            }
+
+            try
+            {
+                bool success = false;
+                int inLen = ep.InputReportLength > 0 ? ep.InputReportLength : 20;
+
+                // 1. Try Feature 0x2202 (Extended Adjustable DPI with independent X/Y)
+                if (ep.ExtDpiFeatureIndex > 0)
+                {
+                    byte[] tx = new byte[20];
+                    tx[0] = 0x11;
+                    tx[1] = ep.DevIndex;
+                    tx[2] = ep.ExtDpiFeatureIndex;
+                    tx[3] = 0x60; // Func 6: Set Extended DPI
+                    tx[4] = 0x00; // Sensor 0
+                    tx[5] = (byte)(dpiX >> 8);
+                    tx[6] = (byte)(dpiX & 0xFF);
+                    tx[7] = (byte)(dpiY >> 8);
+                    tx[8] = (byte)(dpiY & 0xFF);
+
+                    byte[] rx = SendAndReceive(handle, hEvent, tx, inLen, 350);
+                    if (rx != null && rx.Length >= 4 && rx[2] == ep.ExtDpiFeatureIndex)
+                    {
+                        success = true;
+                    }
+                }
+
+                // 2. Fallback to Feature 0x2201 (Adjustable DPI unified)
+                if (!success && ep.DpiFeatureIndex > 0)
+                {
+                    byte[] tx = new byte[20];
+                    tx[0] = 0x11;
+                    tx[1] = ep.DevIndex;
+                    tx[2] = ep.DpiFeatureIndex;
+                    tx[3] = 0x30; // Func 3: Set Sensor DPI
+                    tx[4] = 0x00; // Sensor 0
+                    tx[5] = (byte)(dpiX >> 8);
+                    tx[6] = (byte)(dpiX & 0xFF);
+
+                    byte[] rx = SendAndReceive(handle, hEvent, tx, inLen, 350);
+                    if (rx != null && rx.Length >= 4 && rx[2] == ep.DpiFeatureIndex)
+                    {
+                        success = true;
+                    }
+                }
+
+                if (success)
+                {
+                    ep.CurrentDpi = dpiX;
+                    ep.CurrentDpiY = dpiY;
+                    CachedDpi = dpiX;
+                    CachedDpiY = dpiY;
+                    SaveHardwareCache();
+                }
+
+                return success;
+            }
+            finally
+            {
+                CloseHandle(hEvent);
+                CloseHandle(handle);
+            }
+        }
+    }
+
+    public static bool SetLogitechPollingRate(int hz, string targetDeviceId = null)
+    {
+        lock (hidLock)
+        {
+            LogitechEndpoint ep = FindEndpoint(targetDeviceId);
+            if (ep == null) return false;
+
+            IntPtr handle = CreateFile(
+                ep.DevicePath,
+                GENERIC_READ | GENERIC_WRITE,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                IntPtr.Zero,
+                OPEN_EXISTING,
+                FILE_FLAG_OVERLAPPED,
+                IntPtr.Zero);
+
+            if (handle == IntPtr.Zero || handle.ToInt64() == -1) return false;
+
+            IntPtr hEvent = CreateEvent(IntPtr.Zero, true, false, null);
+            if (hEvent == IntPtr.Zero)
+            {
+                CloseHandle(handle);
+                return false;
+            }
+
+            try
+            {
+                bool success = false;
+                int inLen = ep.InputReportLength > 0 ? ep.InputReportLength : 20;
+
+                // 1. Try Feature 0x8061 (Extended Adjustable Report Rate, 1K/2K/4K/8K)
+                if (ep.ExtRateFeatureIndex > 0)
+                {
+                    byte rateIdx;
+                    if (hz >= 8000) rateIdx = 6;
+                    else if (hz >= 4000) rateIdx = 5;
+                    else if (hz >= 2000) rateIdx = 4;
+                    else if (hz >= 1000) rateIdx = 3;
+                    else if (hz >= 500) rateIdx = 2;
+                    else if (hz >= 250) rateIdx = 1;
+                    else rateIdx = 0; // 125Hz
+
+                    byte[] tx = new byte[20];
+                    tx[0] = 0x11;
+                    tx[1] = ep.DevIndex;
+                    tx[2] = ep.ExtRateFeatureIndex;
+                    tx[3] = 0x30; // Func 3: Set report rate
+                    tx[4] = rateIdx;
+
+                    byte[] rx = SendAndReceive(handle, hEvent, tx, inLen, 350);
+                    if (rx != null && rx.Length >= 4 && rx[2] == ep.ExtRateFeatureIndex)
+                    {
+                        success = true;
+                    }
+                }
+
+                // 2. Fallback to Feature 0x8060 (Standard Adjustable Report Rate)
+                if (!success && ep.RateFeatureIndex > 0)
+                {
+                    byte msInterval;
+                    if (hz >= 1000) msInterval = 1;
+                    else if (hz >= 500) msInterval = 2;
+                    else if (hz >= 250) msInterval = 4;
+                    else msInterval = 8;
+
+                    byte[] tx = new byte[20];
+                    tx[0] = 0x11;
+                    tx[1] = ep.DevIndex;
+                    tx[2] = ep.RateFeatureIndex;
+                    tx[3] = 0x20; // Func 2: Set report rate
+                    tx[4] = msInterval;
+
+                    byte[] rx = SendAndReceive(handle, hEvent, tx, inLen, 350);
+                    if (rx != null && rx.Length >= 4 && rx[2] == ep.RateFeatureIndex)
+                    {
+                        success = true;
+                    }
+                }
+
+                if (success)
+                {
+                    ep.PollingRate = hz;
+                    CachedPollingRate = hz;
+                    SaveHardwareCache();
+                }
+
+                return success;
+            }
+            finally
+            {
+                CloseHandle(hEvent);
+                CloseHandle(handle);
+            }
+        }
+    }
+
+    public static bool FastQueryDpi(out int curDpi, out int activeStage, out int stageCount, string targetDeviceId = null)
+    {
+        int dpiY;
+        return FastQueryDpi(out curDpi, out dpiY, out activeStage, out stageCount, targetDeviceId);
+    }
+
+    public static bool FastQueryDpi(out int curDpiX, out int curDpiY, out int activeStage, out int stageCount, string targetDeviceId = null)
+    {
+        curDpiX = -1;
+        curDpiY = -1;
+        activeStage = 1;
+        stageCount = 5;
+
+        LogitechEndpoint ep = FindEndpoint(targetDeviceId);
+        if (ep == null) return false;
+
+        if (ep.CurrentDpi > 0)
+        {
+            curDpiX = ep.CurrentDpi;
+            curDpiY = ep.CurrentDpiY > 0 ? ep.CurrentDpiY : ep.CurrentDpi;
+            activeStage = MatchDpiStage(curDpiX);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static int MatchDpiStage(int dpi)
+    {
+        int[] standardStages = new int[] { 400, 800, 1600, 3200, 6400 };
+        for (int i = 0; i < standardStages.Length; i++)
+        {
+            if (Math.Abs(standardStages[i] - dpi) <= 50) return i + 1;
+        }
+        return 1;
+    }
+
+    public static MouseBatteryInfo QueryLogitechDeviceInfo(string deviceFingerprint = null)
         {
             var list = QueryAllLogitechDevices();
             if (list == null || list.Count == 0) return null;

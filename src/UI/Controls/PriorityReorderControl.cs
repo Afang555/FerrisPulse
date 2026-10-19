@@ -167,6 +167,10 @@ namespace RazerBatteryTray
                             if (dr == DialogResult.Yes)
                             {
                                 DeviceManager.HideOrDeleteDevice(it.DeviceId);
+                                if (!string.IsNullOrEmpty(it.HardwareFingerprint))
+                                {
+                                    DeviceManager.HideOrDeleteDevice(it.HardwareFingerprint);
+                                }
                                 DeleteItem(i);
                             }
                             return;

@@ -64,9 +64,9 @@ namespace RazerBatteryTray
         private const uint FILE_FLAG_OVERLAPPED = 0x40000000;
         private const uint WAIT_OBJECT_0 = 0;
 
-        public static int CachedBatteryPercent = 20;
+        public static int CachedBatteryPercent = -1;
         public static bool CachedIsCharging = false;
-        public static string CachedDeviceName = "VGN Dragonfly F2 Pro Max";
+        public static string CachedDeviceName = "";
         public static DateTime CachedLastUpdated = DateTime.MinValue;
         public static bool HasValidHardwareReading = false;
 
@@ -92,7 +92,7 @@ namespace RazerBatteryTray
                             }
                             else
                             {
-                                CachedBatteryPercent = 20;
+                                CachedBatteryPercent = -1;
                                 HasValidHardwareReading = false;
                             }
                         }
@@ -255,6 +255,23 @@ namespace RazerBatteryTray
             }
         }
 
+        public static int[] GetSupportedPollingRatesForModel(int pid, string modelName)
+        {
+            string name = !string.IsNullOrEmpty(modelName) ? modelName.ToLowerInvariant() : "";
+            if (pid == 0xFC05 || pid == 0xFB24 || name.Contains(" r1 se") || (name.Contains("dragonfly f1") && !name.Contains("pro") && !name.Contains("moba")))
+            {
+                // SE / Standard 1K models
+                return new int[] { 125, 250, 500, 1000 };
+            }
+            if (pid == 0xFB3E || name.Contains("f2") || name.Contains("8k") || name.Contains("8000") || name.Contains("atk"))
+            {
+                // 8K models
+                return new int[] { 125, 250, 500, 1000, 2000, 4000, 8000 };
+            }
+            // 4K models (F1 Pro/Pro Max/MOBA, R1 Pro/Pro Max)
+            return new int[] { 125, 250, 500, 1000, 2000, 4000 };
+        }
+
         public static MouseBatteryInfo QueryVgnDeviceInfo()
         {
             lock (hidLock)
@@ -271,7 +288,7 @@ namespace RazerBatteryTray
                 int foundBattery = -1;
                 bool foundCharging = false;
                 bool isMouseOnline = false;
-                int foundPid = 0xFB3E;
+                int foundPid = 0;
                 int detectedCid = 0;
                 int detectedMid = 0;
 
@@ -411,7 +428,7 @@ namespace RazerBatteryTray
                     }
 
                     string devName = GetModelName(foundPid, foundName, detectedCid, detectedMid);
-                    if (string.IsNullOrEmpty(devName)) devName = !string.IsNullOrEmpty(CachedDeviceName) ? CachedDeviceName : "VGN Dragonfly F2 Pro Max";
+                    if (string.IsNullOrEmpty(devName)) devName = !string.IsNullOrEmpty(CachedDeviceName) ? CachedDeviceName : ("VGN 游戏鼠标 (PID: " + (foundPid > 0 ? foundPid.ToString("X4") : "3554") + ")");
                     CachedDeviceName = devName;
 
                     int displayBattery;
@@ -425,23 +442,23 @@ namespace RazerBatteryTray
                     }
                     else
                     {
-                        displayBattery = 20; // Matches official VGN driver offline fallback
+                        displayBattery = -1;
                     }
 
                     bool displayCharging = (foundBattery >= 0) ? foundCharging : CachedIsCharging;
 
                     return new MouseBatteryInfo
                     {
-                        DeviceId = "VGN:3554:" + foundPid.ToString("X4"),
+                        DeviceId = "VGN:3554:" + (foundPid > 0 ? foundPid.ToString("X4") : "3554"),
                         Brand = "VGN",
                         DeviceName = devName,
                         Category = DeviceCategory.Mouse,
                         Transport = "2.4G 无线",
-                        IsConnected = true,
+                        IsConnected = isMouseOnline,
                         IsSleeping = !isMouseOnline,
                         IsDonglePresent = true,
                         BatteryPercent = displayBattery,
-                        ExactBatteryPercent = displayBattery,
+                        ExactBatteryPercent = displayBattery >= 0 ? displayBattery : 0,
                         IsCharging = displayCharging,
                         LastUpdated = (foundBattery >= 0) ? DateTime.Now : (CachedLastUpdated != DateTime.MinValue ? CachedLastUpdated : DateTime.Now),
                         Dpi = 1600,
@@ -449,7 +466,7 @@ namespace RazerBatteryTray
                         DpiStageCount = 5,
                         DpiStages = new int[] { 400, 800, 1600, 3200, 6400 },
                         PollingRate = 1000,
-                        SupportedPollingRates = new int[] { 1000, 2000, 4000, 8000 }
+                        SupportedPollingRates = GetSupportedPollingRatesForModel(foundPid, devName)
                     };
                 }
 

@@ -28,5 +28,6 @@ namespace RazerBatteryTray
         public float CurrentY { get; set; }
         public float TargetY { get; set; }
         public bool IsCustom { get; set; }
+        public string HardwareFingerprint { get; set; }
     }
 }

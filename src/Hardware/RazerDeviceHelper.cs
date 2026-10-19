@@ -230,7 +230,7 @@ namespace RazerBatteryTray
                 IsXyIndependent = (stState != null) ? stState.IsXyIndependent : false,
                 XyRatio = (stState != null && stState.XyRatio > 0) ? stState.XyRatio : 1.0,
                 PollingRate = (stState != null && stState.PollingRate > 0) ? stState.PollingRate : 1000,
-                SupportedPollingRates = new int[] { 1000, 2000, 4000, 8000 }
+                SupportedPollingRates = GetSupportedPollingRatesForModel(curPid, !string.IsNullOrEmpty(resolvedModelName) ? resolvedModelName : (stState != null ? stState.DeviceName : CachedDeviceName))
             };
         }
 
@@ -245,6 +245,62 @@ namespace RazerBatteryTray
                 return new byte[] { 0xFF, 0x1F, 0x3F };
             }
             return new byte[] { 0x1F, 0x3F, 0xFF };
+        }
+
+        /// <summary>
+        /// 根据雷蛇鼠标硬件型号 PID 与产品名称识别支持的回报率档位
+        /// 8K 超高刷电竞鼠标预设 125Hz ~ 8000Hz (含 125, 500 低档位)
+        /// 传统 1000Hz 鼠标预设 125Hz, 500Hz, 1000Hz
+        /// </summary>
+        public static int[] GetSupportedPollingRatesForModel(int pid, string modelName)
+        {
+            bool is8k = false;
+            if (pid != 0)
+            {
+                switch (pid)
+                {
+                    case 0x0071: // Viper 8KHz
+                    case 0x00B0: // DeathAdder V3 (Wired 8K)
+                    case 0x00B6: case 0x00B7: // DeathAdder V3 Pro
+                    case 0x00BE: case 0x00BF: // DeathAdder V4 Pro
+                    case 0x00B2: case 0x00B3: // DeathAdder V3 HyperSpeed
+                    case 0x00B4: case 0x00B5: // Viper V2 Pro
+                    case 0x00C0: case 0x00C1: case 0x00C2: case 0x00C3: // Viper V3 Pro
+                    case 0x00DE: case 0x00DF: // Viper V3 Pro SE
+                    case 0x00E5: case 0x00E6: // Viper V4 Pro
+                    case 0x00AC: case 0x00AD: // Viper V3 HyperSpeed
+                    case 0x00A7: case 0x00A8: // Viper Mini Signature Edition
+                    case 0x009A: case 0x009B: // Basilisk V3 Pro
+                    case 0x00C4: case 0x00C5: // Basilisk V3 35K
+                    case 0x00A5: case 0x00A6: // Cobra Pro
+                    case 0x008F: case 0x0090: // Naga V2 Pro
+                    case 0x0095: // Naga V2 HyperSpeed
+                    case 0x00B9: // HyperPolling Wireless Dongle
+                        is8k = true;
+                        break;
+                }
+            }
+
+            if (!is8k && !string.IsNullOrEmpty(modelName))
+            {
+                string name = modelName.ToLowerInvariant();
+                if (name.Contains("8k") || name.Contains("8000") ||
+                    name.Contains("v4 pro") || name.Contains("v3 pro") ||
+                    name.Contains("signature edition") || name.Contains("35k") ||
+                    name.Contains("hyperpolling"))
+                {
+                    is8k = true;
+                }
+            }
+
+            if (is8k)
+            {
+                return new int[] { 125, 250, 500, 1000, 2000, 4000, 8000 };
+            }
+            else
+            {
+                return new int[] { 125, 250, 500, 1000 };
+            }
         }
 
         private static readonly Dictionary<int, string> RazerPidToOfficialName = new Dictionary<int, string>
@@ -1134,6 +1190,7 @@ namespace RazerBatteryTray
                                                                             case 0x04: pollingRate = 2000; break;
                                                                             case 0x08: pollingRate = 1000; break;
                                                                             case 0x10: pollingRate = 500; break;
+                                                                            case 0x20: pollingRate = 250; break;
                                                                             case 0x40: pollingRate = 125; break;
                                                                         }
                                                                     }
@@ -1188,7 +1245,7 @@ namespace RazerBatteryTray
                                                         DpiStageCount = stageCount,
                                                         DpiStages = stageList,
                                                         PollingRate = pollingRate,
-                                                        SupportedPollingRates = new int[] { 1000, 2000, 4000, 8000 }
+                                                        SupportedPollingRates = GetSupportedPollingRatesForModel(curPid, resolvedModelName)
                                                     };
 
                                                     // If already present: Wired connection takes precedence over Dongle!
@@ -2264,6 +2321,7 @@ namespace RazerBatteryTray
                 case 2000: rateByte = 0x04; break;
                 case 1000: rateByte = 0x08; break;
                 case 500:  rateByte = 0x10; break;
+                case 250:  rateByte = 0x20; break;
                 case 125:  rateByte = 0x40; break;
             }
 

@@ -297,8 +297,9 @@ namespace RazerBatteryTray
                 StringFormat sf = StringFormat.GenericTypographic;
                 bool isRapoo = (currentBrand == "Rapoo");
                 bool isValkyrie = (currentBrand == "Valkyrie");
-                Color brandAccent = isRapoo ? Color.FromArgb(0, 210, 255) : (isValkyrie ? Color.FromArgb(255, 64, 129) : Color.FromArgb(0, 230, 118));
-                string titleText = isRapoo ? "雷柏 DPI" : (isValkyrie ? "瓦尔基里 DPI" : "鼠标 DPI");
+                bool isLogitech = (currentBrand == "Logitech" || currentBrand == "罗技");
+                Color brandAccent = isRapoo ? Color.FromArgb(0, 210, 255) : (isValkyrie ? Color.FromArgb(255, 64, 129) : (isLogitech ? Color.FromArgb(0, 180, 255) : Color.FromArgb(0, 230, 118)));
+                string titleText = isRapoo ? "雷柏 DPI" : (isValkyrie ? "瓦尔基里 DPI" : (isLogitech ? "罗技 DPI" : "鼠标 DPI"));
 
                 if (isRateMode)
                 {

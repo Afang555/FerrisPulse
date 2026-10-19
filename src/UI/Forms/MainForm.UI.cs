@@ -206,7 +206,19 @@ namespace RazerBatteryTray
 
             // ================= CARD 2: PERFORMANCE & TUNING =================
             int card2Y = card1Y + card1H + (int)(12 * dpiScale);
-            int card2H = autoGameRateEnabled ? (int)(218 * dpiScale) : (int)(148 * dpiScale);
+            int card2H;
+            if (!autoGameRateEnabled && !autoGameDpiEnabled)
+            {
+                card2H = (int)(148 * dpiScale);
+            }
+            else if (autoGameRateEnabled && autoGameDpiEnabled)
+            {
+                card2H = (int)(255 * dpiScale);
+            }
+            else
+            {
+                card2H = (int)(218 * dpiScale);
+            }
 
             cardPerformance = new RoundedCard();
             cardPerformance.Location = new Point(padX, card2Y);
@@ -233,14 +245,14 @@ namespace RazerBatteryTray
             lblLiveRateBadge.ForeColor = Color.FromArgb(0, 230, 118);
             lblLiveRateBadge.BackColor = Color.Transparent;
             lblLiveRateBadge.TextAlign = ContentAlignment.MiddleRight;
-            lblLiveRateBadge.Location = new Point(cardW - cPad - (int)(220 * dpiScale), (int)(14 * dpiScale));
-            lblLiveRateBadge.Size = new Size((int)(220 * dpiScale), (int)(20 * dpiScale));
+            lblLiveRateBadge.Location = new Point(cardW - cPad - (int)(260 * dpiScale), (int)(14 * dpiScale));
+            lblLiveRateBadge.Size = new Size((int)(260 * dpiScale), (int)(20 * dpiScale));
             lblLiveRateBadge.Visible = false;
             cardPerformance.Controls.Add(lblLiveRateBadge);
 
             // Row 1: DPI 档位
             int r1Y = (int)(38 * dpiScale);
-            int lblW = (int)(86 * dpiScale);
+            int lblW = (int)(92 * dpiScale);
             int segH = (int)(28 * dpiScale);
 
             lblDpiTitle = new Label();
@@ -287,38 +299,48 @@ namespace RazerBatteryTray
             lblRateTitle.Size = new Size(lblW, (int)(22 * dpiScale));
             cardPerformance.Controls.Add(lblRateTitle);
 
-            int hzStartX = cPad + lblW;
-            int hzGap = (int)(6 * dpiScale);
-            int hzSegW = (secW - lblW - (hzGap * 3)) / 4;
-
-            btnRates = new ModernSegmentButton[4];
-            for (int i = 0; i < 4; i++)
+            btnRates = new ModernSegmentButton[8];
+            for (int i = 0; i < 8; i++)
             {
                 int index = i;
-                int hzVal = pollingRateValues[i];
                 var btn = new ModernSegmentButton();
-                btn.Text = hzVal + " Hz";
                 btn.Font = new Font("Microsoft YaHei UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point);
-                btn.Location = new Point(hzStartX + i * (hzSegW + hzGap), r2Y);
-                btn.Size = new Size(hzSegW, segH);
-                btn.Click += (s, e) => SetPollingRateFromUI(pollingRateValues[index]);
+                btn.Click += (s, e) => {
+                    if (pollingRateValues != null && index < pollingRateValues.Length)
+                    {
+                        SetPollingRateFromUI(pollingRateValues[index]);
+                    }
+                };
                 cardPerformance.Controls.Add(btn);
                 btnRates[i] = btn;
             }
 
-            // Row 3: 全屏游戏自动切换回报率 (开关 + 游戏管理按钮)
+            btnRateManage = new ModernButton();
+            btnRateManage.IsGearButton = true;
+            btnRateManage.CornerRadius = (int)(6 * dpiScale);
+            btnRateManage.Cursor = Cursors.Hand;
+            btnRateManage.Click += (s, e) => OpenPollingRateManagementDialog();
+            toolTipTop.SetToolTip(btnRateManage, "自定义常用回报率档位与快捷设置");
+            cardPerformance.Controls.Add(btnRateManage);
+
+            RelayoutRateButtons();
+
+            // Row 3: 全屏游戏自动优化 (总开关 + 游戏管理按钮)
             int gameSwY = (int)(112 * dpiScale);
-            int gameChkW = (int)(180 * dpiScale);
-            chkAutoGameRate = new ModernCheckBox();
-            chkAutoGameRate.Text = "全屏游戏自动切换回报率";
-            chkAutoGameRate.Font = new Font("Microsoft YaHei UI", 8.8F, FontStyle.Regular, GraphicsUnit.Point);
-            chkAutoGameRate.ForeColor = Color.FromArgb(210, 220, 240);
-            chkAutoGameRate.Location = new Point(cPad, gameSwY);
-            chkAutoGameRate.Size = new Size(gameChkW, (int)(26 * dpiScale));
-            chkAutoGameRate.CheckedChanged += (s, e) => {
-                if (!isUpdatingUI) SetAutoGameRateEnabled(chkAutoGameRate.Checked);
+            int gap = (int)(6 * dpiScale);
+            int chkOptW = (int)(160 * dpiScale);
+            int btnMgrW = secW - chkOptW - gap;
+
+            chkAutoGameOpt = new ModernCheckBox();
+            chkAutoGameOpt.Text = "全屏游戏自动优化";
+            chkAutoGameOpt.Font = new Font("Microsoft YaHei UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point);
+            chkAutoGameOpt.ForeColor = Color.FromArgb(210, 220, 240);
+            chkAutoGameOpt.Location = new Point(cPad, gameSwY);
+            chkAutoGameOpt.Size = new Size(chkOptW, (int)(26 * dpiScale));
+            chkAutoGameOpt.CheckedChanged += (s, e) => {
+                if (!isUpdatingUI) SetAutoGameOptEnabled(chkAutoGameOpt.Checked);
             };
-            cardPerformance.Controls.Add(chkAutoGameRate);
+            cardPerformance.Controls.Add(chkAutoGameOpt);
 
             btnManageGames = new ModernButton();
             UpdateManageGamesButtonText();
@@ -330,49 +352,84 @@ namespace RazerBatteryTray
             btnManageGames.TextColor = Color.FromArgb(0, 230, 118);
             btnManageGames.CornerRadius = (int)(5 * dpiScale);
             btnManageGames.Cursor = Cursors.Hand;
-            int btnMgrX = cPad + gameChkW + (int)(6 * dpiScale);
-            int btnMgrW = secW - gameChkW - (int)(6 * dpiScale);
+            int btnMgrX = cPad + chkOptW + gap;
             btnManageGames.Location = new Point(btnMgrX, gameSwY);
             btnManageGames.Size = new Size(btnMgrW, (int)(26 * dpiScale));
             btnManageGames.Click += (s, e) => OpenGameProcessManager();
             cardPerformance.Controls.Add(btnManageGames);
 
-            // Row 4: 电竞回报率选择
-            int gameRateY = (int)(147 * dpiScale);
-            lblGameRateTitle = new Label();
-            lblGameRateTitle.Text = "电竞回报率";
-            lblGameRateTitle.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Regular, GraphicsUnit.Point);
-            lblGameRateTitle.ForeColor = Color.FromArgb(160, 168, 185);
-            lblGameRateTitle.BackColor = Color.Transparent;
-            lblGameRateTitle.Location = new Point(cPad, (int)(150 * dpiScale));
-            lblGameRateTitle.Size = new Size(lblW, (int)(22 * dpiScale));
-            lblGameRateTitle.Visible = false;
-            cardPerformance.Controls.Add(lblGameRateTitle);
+            // Row 4: 电竞 DPI 档位选择 (独立开关 + 5 档选择)
+            chkAutoGameDpi = new ModernCheckBox();
+            chkAutoGameDpi.Text = "电竞 DPI";
+            chkAutoGameDpi.Font = new Font("Microsoft YaHei UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point);
+            chkAutoGameDpi.ForeColor = Color.FromArgb(210, 220, 240);
+            chkAutoGameDpi.Location = new Point(cPad, (int)(147 * dpiScale));
+            chkAutoGameDpi.Size = new Size(lblW, (int)(28 * dpiScale));
+            chkAutoGameDpi.Visible = false;
+            chkAutoGameDpi.CheckedChanged += (s, e) => {
+                if (!isUpdatingUI) SetAutoGameDpiEnabled(chkAutoGameDpi.Checked);
+            };
+            cardPerformance.Controls.Add(chkAutoGameDpi);
 
-            btnGameRates = new ModernSegmentButton[4];
-            for (int i = 0; i < 4; i++)
+            lblGameDpiTitle = new Label();
+            lblGameDpiTitle.Visible = false;
+
+            btnGameDpiStages = new ModernSegmentButton[5];
+            for (int i = 0; i < 5; i++)
+            {
+                int stageNum = i + 1;
+                var btn = new ModernSegmentButton();
+                btn.Text = "第" + stageNum + "档";
+                btn.Font = new Font("Microsoft YaHei UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point);
+                btn.Visible = false;
+                btn.Click += (s, e) => {
+                    SetGameDpiStageFromUI(stageNum);
+                };
+                cardPerformance.Controls.Add(btn);
+                btnGameDpiStages[i] = btn;
+            }
+
+            // Row 5: 电竞回报率选择 (独立开关 + 回报率档位)
+            chkAutoGameRate = new ModernCheckBox();
+            chkAutoGameRate.Text = "电竞回报率";
+            chkAutoGameRate.Font = new Font("Microsoft YaHei UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point);
+            chkAutoGameRate.ForeColor = Color.FromArgb(210, 220, 240);
+            chkAutoGameRate.Location = new Point(cPad, (int)(184 * dpiScale));
+            chkAutoGameRate.Size = new Size(lblW, (int)(28 * dpiScale));
+            chkAutoGameRate.Visible = false;
+            chkAutoGameRate.CheckedChanged += (s, e) => {
+                if (!isUpdatingUI) SetAutoGameRateEnabled(chkAutoGameRate.Checked);
+            };
+            cardPerformance.Controls.Add(chkAutoGameRate);
+
+            lblGameRateTitle = new Label();
+            lblGameRateTitle.Visible = false;
+
+            btnGameRates = new ModernSegmentButton[8];
+            for (int i = 0; i < 8; i++)
             {
                 int index = i;
-                int hzVal = pollingRateValues[i];
                 var btn = new ModernSegmentButton();
-                btn.Text = hzVal + " Hz";
                 btn.Font = new Font("Microsoft YaHei UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point);
-                btn.Location = new Point(hzStartX + i * (hzSegW + hzGap), gameRateY);
-                btn.Size = new Size(hzSegW, segH);
                 btn.Visible = false;
-                btn.Click += (s, e) => SetGamePollingRateFromUI(pollingRateValues[index]);
+                btn.Click += (s, e) => {
+                    if (pollingRateValues != null && index < pollingRateValues.Length)
+                    {
+                        SetGamePollingRateFromUI(pollingRateValues[index]);
+                    }
+                };
                 cardPerformance.Controls.Add(btn);
                 btnGameRates[i] = btn;
             }
 
-            // Row 5: 提醒方式设置
-            int gameNotifY = (int)(184 * dpiScale);
+            // Row 6: 提醒方式设置
+            int gameNotifY = (int)(221 * dpiScale);
             lblNotifyModeTitle = new Label();
             lblNotifyModeTitle.Text = "切换提醒:";
             lblNotifyModeTitle.Font = new Font("Microsoft YaHei UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point);
             lblNotifyModeTitle.ForeColor = Color.FromArgb(140, 150, 170);
             lblNotifyModeTitle.BackColor = Color.Transparent;
-            lblNotifyModeTitle.Location = new Point(cPad, (int)(185 * dpiScale));
+            lblNotifyModeTitle.Location = new Point(cPad, (int)(222 * dpiScale));
             lblNotifyModeTitle.Size = new Size((int)(62 * dpiScale), (int)(20 * dpiScale));
             lblNotifyModeTitle.Visible = false;
             cardPerformance.Controls.Add(lblNotifyModeTitle);
@@ -1036,7 +1093,7 @@ namespace RazerBatteryTray
             int cPad = (int)(18 * dpiScale);
             int secW = cardPerformance.ClientSize.Width - (cPad * 2);
             int r1Y = (int)(38 * dpiScale);
-            int lblW = (int)(86 * dpiScale);
+            int lblW = (int)(92 * dpiScale);
             int segH = (int)(28 * dpiScale);
 
             int dpiStartX = cPad + lblW;
@@ -1078,7 +1135,7 @@ namespace RazerBatteryTray
             btnDpiManage.Location = new Point(dpiStartX + count * (stageW + gap), r1Y);
             btnDpiManage.Size = new Size(manageBtnW, segH);
 
-            if (dpiMenu != null && selectedDevice != null && (selectedDevice.Brand == "Razer" || selectedDevice.Brand == "Valkyrie"))
+            if (dpiMenu != null && selectedDevice != null && (selectedDevice.Brand == "Razer" || selectedDevice.Brand == "Valkyrie" || selectedDevice.Brand == "Logitech" || selectedDevice.Brand == "罗技"))
             {
                 dpiMenu.DropDownItems.Clear();
                 for (int i = 0; i < dpiStageList.Count; i++)
@@ -1097,12 +1154,65 @@ namespace RazerBatteryTray
             }
         }
 
+        private void RelayoutRateButtons()
+        {
+            if (cardPerformance == null || btnRates == null || btnRateManage == null) return;
+
+            int cPad = (int)(18 * dpiScale);
+            int secW = cardPerformance.ClientSize.Width - (cPad * 2);
+            int r2Y = (int)(75 * dpiScale);
+            int lblW = (int)(92 * dpiScale);
+            int segH = (int)(28 * dpiScale);
+
+            int hzStartX = cPad + lblW;
+            int availableW = secW - lblW;
+            int gap = (int)(6 * dpiScale);
+            int manageBtnW = segH;
+
+            // 回报率最多 5 档快捷显示
+            int count = Math.Max(1, Math.Min(5, Math.Min(btnRates.Length, (pollingRateValues != null) ? pollingRateValues.Length : 4)));
+
+            // 1. 常规桌面回报率档位（末尾空出齿轮按钮位置）
+            int remainingW = availableW - manageBtnW - gap;
+            int hzSegW = (remainingW - (count - 1) * gap) / count;
+
+            for (int i = 0; i < btnRates.Length; i++)
+            {
+                if (i < count && pollingRateValues != null && i < pollingRateValues.Length)
+                {
+                    int hzVal = pollingRateValues[i];
+                    btnRates[i].Visible = true;
+                    if (hzSegW < (int)(46 * dpiScale) && hzVal >= 1000)
+                    {
+                        btnRates[i].Text = (hzVal / 1000) + "K";
+                    }
+                    else
+                    {
+                        btnRates[i].Text = hzVal + " Hz";
+                    }
+                    btnRates[i].Location = new Point(hzStartX + i * (hzSegW + gap), r2Y);
+                    btnRates[i].Size = new Size(hzSegW, segH);
+                    string tipText = string.Format("{0} Hz · 响应延迟 {1:F3} ms", hzVal, 1000.0 / hzVal);
+                    toolTipTop.SetToolTip(btnRates[i], tipText);
+                    btnRates[i].Invalidate();
+                }
+                else
+                {
+                    btnRates[i].Visible = false;
+                }
+            }
+
+            btnRateManage.Visible = true;
+            btnRateManage.Location = new Point(hzStartX + count * (hzSegW + gap), r2Y);
+            btnRateManage.Size = new Size(manageBtnW, segH);
+        }
+
         private void RelayoutPerformanceControls()
         {
             if (cardPerformance == null) return;
             int cPad = (int)(18 * dpiScale);
             int secW = cardPerformance.ClientSize.Width - (cPad * 2);
-            int lblW = (int)(86 * dpiScale);
+            int lblW = (int)(92 * dpiScale);
             int segH = (int)(28 * dpiScale);
 
             int r1Y = (int)(38 * dpiScale);
@@ -1113,83 +1223,130 @@ namespace RazerBatteryTray
             }
             RelayoutDpiButtons();
 
-            int r2Y = (int)(75 * dpiScale);
             if (lblRateTitle != null)
             {
                 lblRateTitle.Location = new Point(cPad, (int)(78 * dpiScale));
                 lblRateTitle.Size = new Size(lblW, (int)(22 * dpiScale));
             }
+            RelayoutRateButtons();
 
-            int hzStartX = cPad + lblW;
-            int hzGap = (int)(6 * dpiScale);
-            int hzSegW = (secW - lblW - (hzGap * 3)) / 4;
-            if (btnRates != null)
-            {
-                for (int i = 0; i < btnRates.Length; i++)
-                {
-                    if (btnRates[i] != null)
-                    {
-                        btnRates[i].Location = new Point(hzStartX + i * (hzSegW + hzGap), r2Y);
-                        btnRates[i].Size = new Size(hzSegW, segH);
-                    }
-                }
-            }
-
+            // Row 3: 全屏游戏自动优化总开关 + 游戏管理 (恒定 Y = 112)
             int gameSwY = (int)(112 * dpiScale);
-            int gameChkW = (int)(180 * dpiScale);
-            if (chkAutoGameRate != null)
+            int gap = (int)(6 * dpiScale);
+            bool isOptExpanded = (autoGameRateEnabled || autoGameDpiEnabled);
+            int chkOptW = isOptExpanded ? (int)(160 * dpiScale) : secW;
+            int btnMgrW = secW - (int)(160 * dpiScale) - gap;
+
+            if (chkAutoGameOpt != null)
             {
-                chkAutoGameRate.Location = new Point(cPad, gameSwY);
-                chkAutoGameRate.Size = new Size(gameChkW, (int)(26 * dpiScale));
+                chkAutoGameOpt.Location = new Point(cPad, gameSwY);
+                chkAutoGameOpt.Size = new Size(chkOptW, (int)(26 * dpiScale));
             }
             if (btnManageGames != null)
             {
-                int btnMgrX = cPad + gameChkW + (int)(6 * dpiScale);
-                int btnMgrW = secW - gameChkW - (int)(6 * dpiScale);
+                int btnMgrX = cPad + (int)(160 * dpiScale) + gap;
                 btnManageGames.Location = new Point(btnMgrX, gameSwY);
                 btnManageGames.Size = new Size(btnMgrW, (int)(26 * dpiScale));
                 btnManageGames.CornerRadius = (int)(5 * dpiScale);
             }
 
-            int gameRateY = (int)(147 * dpiScale);
-            if (lblGameRateTitle != null)
+            int availableW = secW - lblW;
+            int hzStartX = cPad + lblW;
+
+            // Row 4: 电竞 DPI 档位 (恒定 Y = 147)
+            int r4Y = (int)(147 * dpiScale);
+            if (chkAutoGameDpi != null)
             {
-                lblGameRateTitle.Location = new Point(cPad, (int)(150 * dpiScale));
-                lblGameRateTitle.Size = new Size(lblW, (int)(22 * dpiScale));
+                chkAutoGameDpi.Location = new Point(cPad, r4Y);
+                chkAutoGameDpi.Size = new Size(lblW, segH);
             }
-            if (btnGameRates != null)
+            if (btnGameDpiStages != null)
             {
-                for (int i = 0; i < btnGameRates.Length; i++)
+                int dpiCount = Math.Max(1, Math.Min(5, dpiStageList.Count));
+                int stageW = (availableW - (dpiCount - 1) * gap) / dpiCount;
+                for (int i = 0; i < btnGameDpiStages.Length; i++)
                 {
-                    if (btnGameRates[i] != null)
+                    if (btnGameDpiStages[i] != null)
                     {
-                        btnGameRates[i].Location = new Point(hzStartX + i * (hzSegW + hzGap), gameRateY);
-                        btnGameRates[i].Size = new Size(hzSegW, segH);
+                        if (i < dpiCount)
+                        {
+                            btnGameDpiStages[i].Location = new Point(hzStartX + i * (stageW + gap), r4Y);
+                            btnGameDpiStages[i].Size = new Size(stageW, segH);
+                            string valText = (dpiStageList != null && i < dpiStageList.Count) ? dpiStageList[i].ToString() : ("第" + (i + 1) + "档");
+                            btnGameDpiStages[i].Text = valText;
+                            toolTipTop.SetToolTip(btnGameDpiStages[i], string.Format("全屏电竞第 {0} 档: {1} DPI", i + 1, valText));
+                            btnGameDpiStages[i].Enabled = autoGameDpiEnabled;
+                        }
+                        else
+                        {
+                            btnGameDpiStages[i].Visible = false;
+                        }
                     }
                 }
             }
 
-            int gameNotifY = (int)(184 * dpiScale);
+            // Row 5: 电竞回报率 (恒定 Y = 184)
+            int r5Y = (int)(184 * dpiScale);
+            if (chkAutoGameRate != null)
+            {
+                chkAutoGameRate.Location = new Point(cPad, r5Y);
+                chkAutoGameRate.Size = new Size(lblW, segH);
+            }
+            if (btnGameRates != null)
+            {
+                int rateCount = Math.Max(1, Math.Min(5, Math.Min(btnGameRates.Length, (pollingRateValues != null) ? pollingRateValues.Length : 4)));
+                int gameSegW = (availableW - (rateCount - 1) * gap) / rateCount;
+                for (int i = 0; i < btnGameRates.Length; i++)
+                {
+                    if (btnGameRates[i] != null)
+                    {
+                        if (i < rateCount && pollingRateValues != null && i < pollingRateValues.Length)
+                        {
+                            int hzVal = pollingRateValues[i];
+                            btnGameRates[i].Location = new Point(hzStartX + i * (gameSegW + gap), r5Y);
+                            btnGameRates[i].Size = new Size(gameSegW, segH);
+                            if (gameSegW < (int)(46 * dpiScale) && hzVal >= 1000)
+                            {
+                                btnGameRates[i].Text = (hzVal / 1000) + "K";
+                            }
+                            else
+                            {
+                                btnGameRates[i].Text = hzVal + " Hz";
+                            }
+                            string tip = string.Format("全屏电竞回报率: {0} Hz · 延迟 {1:F3} ms", hzVal, 1000.0 / hzVal);
+                            toolTipTop.SetToolTip(btnGameRates[i], tip);
+                            btnGameRates[i].Enabled = autoGameRateEnabled;
+                        }
+                        else
+                        {
+                            btnGameRates[i].Visible = false;
+                        }
+                    }
+                }
+            }
+
+            // Row 6: 切换提醒方式 (恒定 Y = 221)
+            int r6Y = (int)(221 * dpiScale);
             if (lblNotifyModeTitle != null)
             {
-                lblNotifyModeTitle.Location = new Point(cPad, (int)(185 * dpiScale));
+                lblNotifyModeTitle.Location = new Point(cPad, r6Y + (int)(1 * dpiScale));
                 lblNotifyModeTitle.Size = new Size((int)(62 * dpiScale), (int)(20 * dpiScale));
             }
             int notifStartX = cPad + (int)(64 * dpiScale);
             int notifW = (secW - (int)(64 * dpiScale)) / 3;
             if (chkNotifyOsd != null)
             {
-                chkNotifyOsd.Location = new Point(notifStartX, gameNotifY);
+                chkNotifyOsd.Location = new Point(notifStartX, r6Y);
                 chkNotifyOsd.Size = new Size(notifW, (int)(22 * dpiScale));
             }
             if (chkNotifyToast != null)
             {
-                chkNotifyToast.Location = new Point(notifStartX + notifW, gameNotifY);
+                chkNotifyToast.Location = new Point(notifStartX + notifW, r6Y);
                 chkNotifyToast.Size = new Size(notifW, (int)(22 * dpiScale));
             }
             if (chkNotifySound != null)
             {
-                chkNotifySound.Location = new Point(notifStartX + notifW * 2, gameNotifY);
+                chkNotifySound.Location = new Point(notifStartX + notifW * 2, r6Y);
                 chkNotifySound.Size = new Size(notifW, (int)(22 * dpiScale));
             }
         }
@@ -1214,6 +1371,13 @@ namespace RazerBatteryTray
             int targetStage = index + 1;
             int targetDpi = dpiStageList[index];
 
+            if (isGamingActive && autoGameDpiEnabled)
+            {
+                gameDpiStage = targetStage;
+                UpdateGameDpiButtonSelection(targetStage);
+                SaveConfig();
+            }
+
             var curDev = selectedDevice;
             if (curDev != null && curDev.Brand == "Razer")
             {
@@ -1235,7 +1399,7 @@ namespace RazerBatteryTray
                     }));
                 }) { IsBackground = true }.Start();
             }
-            else if (curDev != null && curDev.Brand == "Valkyrie")
+            else if (curDev != null && (curDev.Brand == "Valkyrie" || curDev.Brand == "瓦尔基里"))
             {
                 int[] stagesX = (curDev.DpiStages != null && curDev.DpiStages.Length > 0) ? curDev.DpiStages : dpiStageList.ToArray();
                 int[] stagesY = (curDev.DpiStagesY != null && curDev.DpiStagesY.Length == stagesX.Length) ? curDev.DpiStagesY : stagesX;
@@ -1251,6 +1415,45 @@ namespace RazerBatteryTray
                         }
                         HighlightDpiStage(targetStage);
                         OnDpiChanged("Valkyrie", targetDpi, targetStage, dpiStageList.Count);
+                    }));
+                }) { IsBackground = true }.Start();
+            }
+            else if (curDev != null && (curDev.Brand == "Logitech" || curDev.Brand == "罗技"))
+            {
+                int[] stagesX = (curDev.DpiStages != null && curDev.DpiStages.Length > 0) ? curDev.DpiStages : dpiStageList.ToArray();
+                int[] stagesY = (curDev.DpiStagesY != null && curDev.DpiStagesY.Length == stagesX.Length) ? curDev.DpiStagesY : stagesX;
+                int targetDpiY = (stagesY != null && stagesY.Length > index) ? stagesY[index] : targetDpi;
+                string devId = curDev.DeviceId;
+                new Thread(() => {
+                    bool ok = LogitechDeviceHelper.SetLogitechDpi(targetDpi, targetDpiY, devId);
+                    this.BeginInvoke(new Action(() => {
+                        if (curDev != null)
+                        {
+                            curDev.Dpi = targetDpi;
+                            curDev.DpiY = targetDpiY;
+                            curDev.DpiStage = targetStage;
+                        }
+                        HighlightDpiStage(targetStage);
+                        OnDpiChanged("Logitech", targetDpi, targetStage, dpiStageList.Count, devId);
+                    }));
+                }) { IsBackground = true }.Start();
+            }
+            else if (curDev != null && (curDev.Brand == "Rapoo" || curDev.Brand == "雷柏"))
+            {
+                int[] stagesX = (curDev.DpiStages != null && curDev.DpiStages.Length > 0) ? curDev.DpiStages : dpiStageList.ToArray();
+                int[] stagesY = (curDev.DpiStagesY != null && curDev.DpiStagesY.Length == stagesX.Length) ? curDev.DpiStagesY : stagesX;
+                int targetDpiY = (stagesY != null && stagesY.Length > index) ? stagesY[index] : targetDpi;
+                new Thread(() => {
+                    bool ok = RapooDeviceHelper.SetRapooDpiStage(targetStage);
+                    this.BeginInvoke(new Action(() => {
+                        if (curDev != null)
+                        {
+                            curDev.Dpi = targetDpi;
+                            curDev.DpiY = targetDpiY;
+                            curDev.DpiStage = targetStage;
+                        }
+                        HighlightDpiStage(targetStage);
+                        OnDpiChanged("Rapoo", targetDpi, targetStage, dpiStageList.Count);
                     }));
                 }) { IsBackground = true }.Start();
             }
@@ -1342,18 +1545,41 @@ namespace RazerBatteryTray
                 }
             }
 
-            if (autoGameRateMenu != null && autoGameRateMenu.DropDownItems.Count > 2)
+            if (gameRateSub != null)
             {
-                var gameRateSub = autoGameRateMenu.DropDownItems[2] as ToolStripMenuItem;
-                if (gameRateSub != null)
+                foreach (ToolStripItem item in gameRateSub.DropDownItems)
                 {
-                    foreach (ToolStripItem item in gameRateSub.DropDownItems)
+                    var mi = item as ToolStripMenuItem;
+                    if (mi != null && mi.Tag != null)
                     {
-                        var mi = item as ToolStripMenuItem;
-                        if (mi != null && mi.Tag != null)
-                        {
-                            mi.Checked = ((int)mi.Tag == hz);
-                        }
+                        mi.Checked = ((int)mi.Tag == hz);
+                    }
+                }
+            }
+            UpdatePollingRateDisplayStates();
+        }
+
+        private void UpdateGameDpiButtonSelection(int stage)
+        {
+            if (btnGameDpiStages != null)
+            {
+                for (int i = 0; i < btnGameDpiStages.Length; i++)
+                {
+                    if (btnGameDpiStages[i] != null)
+                    {
+                        btnGameDpiStages[i].Selected = ((i + 1) == stage);
+                    }
+                }
+            }
+
+            if (gameDpiSub != null)
+            {
+                foreach (ToolStripItem item in gameDpiSub.DropDownItems)
+                {
+                    var mi = item as ToolStripMenuItem;
+                    if (mi != null && mi.Tag != null)
+                    {
+                        mi.Checked = ((int)mi.Tag == stage);
                     }
                 }
             }
@@ -1394,90 +1620,135 @@ namespace RazerBatteryTray
             bool isRazerMouse = (selectedDevice != null &&
                                  selectedDevice.Category == DeviceCategory.Mouse &&
                                  (selectedDevice.Brand == "Razer" || (selectedDevice.DeviceId != null && selectedDevice.DeviceId.StartsWith("Razer:1532:"))));
+            bool isLogitechMouse = (selectedDevice != null &&
+                                    selectedDevice.Category == DeviceCategory.Mouse &&
+                                    (selectedDevice.Brand == "Logitech" || selectedDevice.Brand == "罗技"));
+            bool isRapooMouse = (selectedDevice != null &&
+                                 selectedDevice.Category == DeviceCategory.Mouse &&
+                                 (selectedDevice.Brand == "Rapoo" || selectedDevice.Brand == "雷柏"));
+            bool isValkyrieMouse = (selectedDevice != null &&
+                                    selectedDevice.Category == DeviceCategory.Mouse &&
+                                    (selectedDevice.Brand == "Valkyrie" || selectedDevice.Brand == "瓦尔基里"));
+            bool isAutoRateSupportedMouse = (isRazerMouse || isLogitechMouse || isRapooMouse || isValkyrieMouse);
 
-            if (!autoGameRateEnabled || !isRazerMouse)
+            // 1. 标题文字保持恒定简洁，不加点也不改色（复选框与按钮颜色已清晰呈现当前生效状态）
+            if (lblRateTitle != null)
             {
-                if (lblLiveRateBadge != null) lblLiveRateBadge.Visible = false;
-                if (lblRateTitle != null)
+                lblRateTitle.Text = "常规回报率";
+                lblRateTitle.ForeColor = Color.FromArgb(160, 168, 185);
+            }
+            if (lblDpiTitle != null)
+            {
+                lblDpiTitle.Text = "DPI 档位";
+                lblDpiTitle.ForeColor = Color.FromArgb(160, 168, 185);
+            }
+            if (chkAutoGameRate != null)
+            {
+                chkAutoGameRate.Text = "电竞回报率";
+                chkAutoGameRate.ForeColor = Color.Empty;
+            }
+            if (chkAutoGameDpi != null)
+            {
+                chkAutoGameDpi.Text = "电竞 DPI";
+                chkAutoGameDpi.ForeColor = Color.Empty;
+            }
+
+            // 2. 右上角硬件生效徽标：保留并增加中间点显示 DPI，去除（常规桌面）提示
+            int currentActiveHz = (isGamingActive && autoGameRateEnabled) ? gamePollingRate : desktopPollingRate;
+            int currentActiveDpi = 0;
+            if (dpiStageList != null && dpiStageList.Count > 0)
+            {
+                if (isGamingActive && autoGameDpiEnabled)
                 {
-                    lblRateTitle.Text = "常规回报率";
-                    lblRateTitle.ForeColor = Color.FromArgb(160, 168, 185);
-                }
-                for (int i = 0; i < btnRates.Length; i++)
-                {
-                    if (btnRates[i] != null && i < pollingRateValues.Length)
+                    if (gameDpiStage > 0 && gameDpiStage <= dpiStageList.Count)
                     {
-                        btnRates[i].Selected = (pollingRateValues[i] == desktopPollingRate);
-                        btnRates[i].IsPreset = false;
+                        currentActiveDpi = dpiStageList[gameDpiStage - 1];
+                    }
+                }
+                else
+                {
+                    int deskStage = (desktopDpiStage > 0) ? desktopDpiStage : ((selectedDevice != null && selectedDevice.DpiStage > 0) ? selectedDevice.DpiStage : 0);
+                    if (deskStage > 0 && deskStage <= dpiStageList.Count)
+                    {
+                        currentActiveDpi = dpiStageList[deskStage - 1];
+                    }
+                    else if (selectedDevice != null && selectedDevice.Dpi > 0)
+                    {
+                        currentActiveDpi = selectedDevice.Dpi;
                     }
                 }
             }
-            else
+            if (currentActiveDpi == 0 && selectedDevice != null && selectedDevice.Dpi > 0)
             {
-                int currentActiveHz = isGamingActive ? gamePollingRate : desktopPollingRate;
-                if (lblLiveRateBadge != null)
+                currentActiveDpi = selectedDevice.Dpi;
+            }
+
+            if (lblLiveRateBadge != null)
+            {
+                bool showBadge = isAutoRateSupportedMouse && (autoGameRateEnabled || autoGameDpiEnabled);
+                lblLiveRateBadge.Visible = showBadge;
+                if (showBadge)
                 {
-                    lblLiveRateBadge.Visible = true;
-                    if (isGamingActive)
+                    string badgeText = "● 硬件生效: " + currentActiveHz + " Hz";
+                    if (currentActiveDpi > 0)
                     {
-                        lblLiveRateBadge.Text = "● 硬件生效: " + currentActiveHz + " Hz (电竞加速)";
-                        lblLiveRateBadge.ForeColor = Color.FromArgb(0, 230, 118);
+                        badgeText += " · " + currentActiveDpi + " DPI";
                     }
-                    else
+                    lblLiveRateBadge.Text = badgeText;
+                    lblLiveRateBadge.ForeColor = isGamingActive ? Color.FromArgb(0, 230, 118) : Color.FromArgb(180, 210, 240);
+                }
+            }
+
+            // 3. 回报率按钮分段高光联动：未使用时深绿预设 (IsPreset = true)，生效时亮绿激活 (IsPreset = false)
+            for (int i = 0; i < btnRates.Length; i++)
+            {
+                if (btnRates[i] != null && pollingRateValues != null && i < pollingRateValues.Length)
+                {
+                    bool isSel = (pollingRateValues[i] == desktopPollingRate);
+                    btnRates[i].Selected = isSel;
+                    btnRates[i].IsPreset = (isSel && isGamingActive && autoGameRateEnabled);
+                }
+            }
+
+            if (btnGameRates != null)
+            {
+                for (int i = 0; i < btnGameRates.Length; i++)
+                {
+                    if (btnGameRates[i] != null && pollingRateValues != null && i < pollingRateValues.Length)
                     {
-                        lblLiveRateBadge.Text = "● 硬件生效: " + currentActiveHz + " Hz (常规桌面)";
-                        lblLiveRateBadge.ForeColor = Color.FromArgb(180, 210, 240);
+                        bool isSel = (pollingRateValues[i] == gamePollingRate);
+                        btnGameRates[i].Selected = isSel;
+                        btnGameRates[i].IsPreset = (isSel && !isGamingActive);
+                        btnGameRates[i].Enabled = autoGameRateEnabled;
                     }
                 }
+            }
 
-                if (lblRateTitle != null)
+            // 4. DPI 档位按钮分段高光联动：未使用时深绿预设 (IsPreset = true)，生效时亮绿激活 (IsPreset = false)
+            int effectiveDesktopStage = (desktopDpiStage > 0) ? desktopDpiStage : ((selectedDevice != null && selectedDevice.DpiStage > 0) ? selectedDevice.DpiStage : 1);
+            if (btnDpiStages != null)
+            {
+                for (int i = 0; i < btnDpiStages.Length; i++)
                 {
-                    if (!isGamingActive)
+                    if (btnDpiStages[i] != null && dpiStageList != null && i < dpiStageList.Count)
                     {
-                        lblRateTitle.Text = "● 常规回报率";
-                        lblRateTitle.ForeColor = Color.FromArgb(0, 230, 118);
-                    }
-                    else
-                    {
-                        lblRateTitle.Text = "常规回报率";
-                        lblRateTitle.ForeColor = Color.FromArgb(160, 168, 185);
+                        bool isCur = (i == (effectiveDesktopStage - 1));
+                        btnDpiStages[i].Selected = isCur;
+                        btnDpiStages[i].IsPreset = (isCur && isGamingActive && autoGameDpiEnabled);
                     }
                 }
+            }
 
-                if (lblGameRateTitle != null)
+            if (btnGameDpiStages != null)
+            {
+                for (int i = 0; i < btnGameDpiStages.Length; i++)
                 {
-                    if (isGamingActive)
+                    if (btnGameDpiStages[i] != null && dpiStageList != null && i < dpiStageList.Count)
                     {
-                        lblGameRateTitle.Text = "● 电竞回报率";
-                        lblGameRateTitle.ForeColor = Color.FromArgb(0, 230, 118);
-                    }
-                    else
-                    {
-                        lblGameRateTitle.Text = "电竞回报率";
-                        lblGameRateTitle.ForeColor = Color.FromArgb(160, 168, 185);
-                    }
-                }
-
-                for (int i = 0; i < btnRates.Length; i++)
-                {
-                    if (btnRates[i] != null && i < pollingRateValues.Length)
-                    {
-                        bool isSel = (pollingRateValues[i] == desktopPollingRate);
-                        btnRates[i].Selected = isSel;
-                        btnRates[i].IsPreset = (isSel && isGamingActive);
-                    }
-                }
-
-                if (btnGameRates != null)
-                {
-                    for (int i = 0; i < btnGameRates.Length; i++)
-                    {
-                        if (btnGameRates[i] != null && i < pollingRateValues.Length)
-                        {
-                            bool isSel = (pollingRateValues[i] == gamePollingRate);
-                            btnGameRates[i].Selected = isSel;
-                            btnGameRates[i].IsPreset = (isSel && !isGamingActive);
-                        }
+                        bool isSel = ((i + 1) == gameDpiStage);
+                        btnGameDpiStages[i].Selected = isSel;
+                        btnGameDpiStages[i].IsPreset = (isSel && !isGamingActive);
+                        btnGameDpiStages[i].Enabled = autoGameDpiEnabled;
                     }
                 }
             }
@@ -1488,21 +1759,53 @@ namespace RazerBatteryTray
             bool isRazerMouse = (selectedDevice != null &&
                                  selectedDevice.Category == DeviceCategory.Mouse &&
                                  (selectedDevice.Brand == "Razer" || (selectedDevice.DeviceId != null && selectedDevice.DeviceId.StartsWith("Razer:1532:"))));
-            bool effective = visible && isRazerMouse;
+            bool isLogitechMouse = (selectedDevice != null && selectedDevice.Category == DeviceCategory.Mouse && (selectedDevice.Brand == "Logitech" || selectedDevice.Brand == "罗技"));
+            bool isRapooMouse = (selectedDevice != null && selectedDevice.Category == DeviceCategory.Mouse && (selectedDevice.Brand == "Rapoo" || selectedDevice.Brand == "雷柏"));
+            bool isValkyrieMouse = (selectedDevice != null && selectedDevice.Category == DeviceCategory.Mouse && (selectedDevice.Brand == "Valkyrie" || selectedDevice.Brand == "瓦尔基里"));
+            bool supportsAutoGameRate = (isRazerMouse || isLogitechMouse || isRapooMouse || isValkyrieMouse);
 
-            if (btnManageGames != null) btnManageGames.Visible = effective;
-            if (lblGameRateTitle != null) lblGameRateTitle.Visible = effective;
-            if (btnGameRates != null)
+            // Row 4, 5, 6 仅在卡片展开且功能开启时展示（两档高度，两档展示）
+            bool isOptExpanded = (autoGameRateEnabled || autoGameDpiEnabled);
+            bool showExpanded = visible && supportsAutoGameRate && isOptExpanded;
+
+            // Row 3: 总开关始终伴随支持设备展示；游戏管理按钮仅在展开时展示
+            if (chkAutoGameOpt != null) chkAutoGameOpt.Visible = supportsAutoGameRate;
+            if (btnManageGames != null) btnManageGames.Visible = showExpanded;
+
+            if (chkAutoGameDpi != null) chkAutoGameDpi.Visible = showExpanded;
+            if (lblGameDpiTitle != null) lblGameDpiTitle.Visible = false;
+            if (btnGameDpiStages != null)
             {
-                for (int i = 0; i < btnGameRates.Length; i++)
+                int count = Math.Max(1, Math.Min(5, dpiStageList.Count));
+                for (int i = 0; i < btnGameDpiStages.Length; i++)
                 {
-                    if (btnGameRates[i] != null) btnGameRates[i].Visible = effective;
+                    if (btnGameDpiStages[i] != null)
+                    {
+                        btnGameDpiStages[i].Visible = showExpanded && (i < count);
+                        btnGameDpiStages[i].Enabled = autoGameDpiEnabled;
+                    }
                 }
             }
-            if (lblNotifyModeTitle != null) lblNotifyModeTitle.Visible = effective;
-            if (chkNotifyOsd != null) chkNotifyOsd.Visible = effective;
-            if (chkNotifyToast != null) chkNotifyToast.Visible = effective;
-            if (chkNotifySound != null) chkNotifySound.Visible = effective;
+
+            if (chkAutoGameRate != null) chkAutoGameRate.Visible = showExpanded;
+            if (lblGameRateTitle != null) lblGameRateTitle.Visible = false;
+            if (btnGameRates != null)
+            {
+                int count = Math.Max(1, Math.Min(5, Math.Min(btnGameRates.Length, (pollingRateValues != null) ? pollingRateValues.Length : 4)));
+                for (int i = 0; i < btnGameRates.Length; i++)
+                {
+                    if (btnGameRates[i] != null)
+                    {
+                        btnGameRates[i].Visible = showExpanded && (i < count);
+                        btnGameRates[i].Enabled = autoGameRateEnabled;
+                    }
+                }
+            }
+
+            if (lblNotifyModeTitle != null) lblNotifyModeTitle.Visible = showExpanded;
+            if (chkNotifyOsd != null) chkNotifyOsd.Visible = showExpanded;
+            if (chkNotifyToast != null) chkNotifyToast.Visible = showExpanded;
+            if (chkNotifySound != null) chkNotifySound.Visible = showExpanded;
         }
 
         private void AnimatePerformanceCardHeight(int targetH)
@@ -1514,7 +1817,7 @@ namespace RazerBatteryTray
             if (!this.Visible || this.WindowState == FormWindowState.Minimized)
             {
                 if (cardAnimTimer != null && cardAnimTimer.Enabled) cardAnimTimer.Stop();
-                SetGameRateControlsVisibility(autoGameRateEnabled);
+                SetGameRateControlsVisibility(autoGameRateEnabled || autoGameDpiEnabled);
                 AdjustPerformanceCardHeight(targetH);
                 return;
             }
@@ -1523,14 +1826,14 @@ namespace RazerBatteryTray
             if (cardPerformance.Height == targetH)
             {
                 if (cardAnimTimer != null && cardAnimTimer.Enabled) cardAnimTimer.Stop();
-                SetGameRateControlsVisibility(autoGameRateEnabled);
+                SetGameRateControlsVisibility(autoGameRateEnabled || autoGameDpiEnabled);
                 return;
             }
 
             // 3. 卷帘门遮罩式动效生命周期：
             // 展开开始时立即点亮子控件，配合卡片容器硬件裁剪 (WS_CLIPCHILDREN) 像卷帘门一样随着底边拉伸自然向下露出；
             // 收回过程中保持子控件可见，随着底边向上收拢自然被裁切遮盖，待完全缩入卡片底边后才彻底设为 false。
-            if (autoGameRateEnabled)
+            if (autoGameRateEnabled || autoGameDpiEnabled)
             {
                 SetGameRateControlsVisibility(true);
             }
@@ -1554,7 +1857,7 @@ namespace RazerBatteryTray
                         AdjustPerformanceCardHeight(animTargetCardH);
 
                         // 收起彻底完成时关闭可见性，避免折叠状态下的无效命中或焦点捕获
-                        SetGameRateControlsVisibility(autoGameRateEnabled);
+                        SetGameRateControlsVisibility(autoGameRateEnabled || autoGameDpiEnabled);
 
                         // 终点全量深度刷新：彻底抹除所有历史脏矩形残留
                         this.Invalidate(true);
@@ -1576,9 +1879,11 @@ namespace RazerBatteryTray
         private void UpdatePerformanceCardHeightForCurrentDevice()
         {
             var dev = selectedDevice;
-            if (dev != null && (dev.Brand == "Razer" || dev.Brand == "Rapoo"))
+            if (dev != null && (dev.Brand == "Razer" || dev.Brand == "Rapoo" || dev.Brand == "Logitech" || dev.Brand == "罗技" || dev.Brand == "Valkyrie" || dev.Brand == "瓦尔基里"))
             {
-                int targetH = autoGameRateEnabled ? (int)(218 * dpiScale) : (int)(148 * dpiScale);
+                bool isOptExpanded = (autoGameRateEnabled || autoGameDpiEnabled);
+                int targetH = isOptExpanded ? (int)(255 * dpiScale) : (int)(148 * dpiScale);
+                RelayoutPerformanceControls();
                 AnimatePerformanceCardHeight(targetH);
             }
         }
@@ -1594,17 +1899,27 @@ namespace RazerBatteryTray
         private void OpenDpiManagementDialog()
         {
             var curDev = selectedDevice;
-            if (curDev == null || (curDev.Brand != "Razer" && curDev.Brand != "Valkyrie")) return;
+            if (curDev == null || (curDev.Brand != "Razer" && curDev.Brand != "Valkyrie" && curDev.Brand != "Logitech" && curDev.Brand != "罗技" && curDev.Brand != "Rapoo")) return;
 
             int curStage = curDev.DpiStage > 0 ? curDev.DpiStage : 1;
             int[] stagesX = (curDev.DpiStages != null && curDev.DpiStages.Length > 0) ? curDev.DpiStages : dpiStageList.ToArray();
             int[] stagesY = (curDev.DpiStagesY != null && curDev.DpiStagesY.Length == stagesX.Length) ? curDev.DpiStagesY : stagesX;
             bool isXy = curDev.IsXyIndependent;
             double xyRatio = (curDev.XyRatio > 0) ? curDev.XyRatio : 1.0;
-            string devName = !string.IsNullOrEmpty(curDev.DisplayName) ? curDev.DisplayName : (curDev.Brand == "Valkyrie" ? "Valkyrie Mouse" : "Razer Mouse");
+            string devName = !string.IsNullOrEmpty(curDev.DisplayName) ? curDev.DisplayName : (curDev.Brand == "Valkyrie" ? "Valkyrie Mouse" : (curDev.Brand == "Logitech" ? "Logitech Mouse" : (curDev.Brand == "Rapoo" ? "Rapoo Mouse" : "Razer Mouse")));
 
             RazerDeviceHelper.RazerDpiCapability cap;
-            if (curDev.Brand == "Valkyrie")
+            if (curDev.Brand == "Rapoo")
+            {
+                cap = new RazerDeviceHelper.RazerDpiCapability
+                {
+                    MinDpi = 50,
+                    MaxDpi = 26000,
+                    Step = 10,
+                    Description = "雷柏原相高精度电竞光学传感器 (PAW3398/3395/3950，最高 26,000 DPI)"
+                };
+            }
+            else if (curDev.Brand == "Valkyrie")
             {
                 cap = new RazerDeviceHelper.RazerDpiCapability
                 {
@@ -1612,6 +1927,30 @@ namespace RazerBatteryTray
                     MaxDpi = 26000,
                     Step = 50,
                     Description = "瓦尔基里高精度电竞光学传感器 (PAW3395/PAW3950)"
+                };
+            }
+            else if (curDev.Brand == "Logitech" || curDev.Brand == "罗技")
+            {
+                int maxDpi = 25600;
+                string sensorDesc = "罗技 HERO 25K / HERO 2 高精度光学传感器";
+                string nameLower = (devName ?? "").ToLower();
+                if (nameLower.Contains("superlight 2 dex") || nameLower.Contains("dex") || nameLower.Contains("gpw 5") || nameLower.Contains("gpw5"))
+                {
+                    maxDpi = 48000;
+                    sensorDesc = "罗技 HERO 2 旗舰级光学传感器 (最高 48,000 DPI / 888 IPS)";
+                }
+                else if (nameLower.Contains("superlight 2") || nameLower.Contains("gpx 2") || nameLower.Contains("gpx2") || nameLower.Contains("gpw 4") || nameLower.Contains("gpw4") || nameLower.Contains("2c"))
+                {
+                    maxDpi = 44000;
+                    sensorDesc = "罗技 HERO 2 高精度光学传感器 (最高 44,000 DPI / 888 IPS)";
+                }
+
+                cap = new RazerDeviceHelper.RazerDpiCapability
+                {
+                    MinDpi = 100,
+                    MaxDpi = maxDpi,
+                    Step = 50,
+                    Description = sensorDesc
                 };
             }
             else
@@ -1680,9 +2019,17 @@ namespace RazerBatteryTray
 
                     // 3. Persist to hardware in background thread
                     new Thread(() => {
-                        if (devBrand == "Valkyrie")
+                        if (devBrand == "Valkyrie" || devBrand == "瓦尔基里")
                         {
                             ValkyrieDeviceHelper.UpdateValkyrieHardwareStages(activeStage, newStagesX, newStagesY);
+                        }
+                        else if (devBrand == "Logitech" || devBrand == "罗技")
+                        {
+                            LogitechDeviceHelper.SetLogitechDpi(activeDpiX, activeDpiY, targetDevId);
+                        }
+                        else if (devBrand == "Rapoo" || devBrand == "雷柏")
+                        {
+                            RapooDeviceHelper.UpdateRapooHardwareStages(activeStage, newStagesX, newStagesY);
                         }
                         else
                         {
@@ -1714,6 +2061,155 @@ namespace RazerBatteryTray
             catch { }
         }
 
+        private void OpenPollingRateManagementDialog()
+        {
+            var curDev = selectedDevice;
+            if (curDev == null) return;
+
+            string devName = !string.IsNullOrEmpty(curDev.DisplayName) ? curDev.DisplayName : (curDev.Brand + " 鼠标");
+            int[] supported = (curDev.SupportedPollingRates != null && curDev.SupportedPollingRates.Length > 0)
+                ? curDev.SupportedPollingRates
+                : new int[] { 125, 250, 500, 1000, 2000, 4000, 8000 };
+
+            int[] activeSelected = (pollingRateValues != null && pollingRateValues.Length > 0)
+                ? pollingRateValues
+                : supported;
+
+            int curHz = curDev.PollingRate > 0 ? curDev.PollingRate : 1000;
+            using (var dlg = new PollingRateManagementDialog(devName, supported, activeSelected, curHz, dpiScale))
+            {
+                if (dlg.ShowDialog(this) == DialogResult.OK)
+                {
+                    int[] newSelected = dlg.SelectedRates;
+                    if (newSelected != null && newSelected.Length > 0)
+                    {
+                        if (newSelected.Length > 5)
+                        {
+                            List<int> clamp5 = new List<int>(newSelected);
+                            clamp5.Sort();
+                            while (clamp5.Count > 5) clamp5.RemoveAt(0);
+                            newSelected = clamp5.ToArray();
+                        }
+                        pollingRateValues = newSelected;
+                        SaveCustomPollingRates(curDev.DeviceId, newSelected);
+
+                        // 档位变更后电竞回报率同步联动：若当前电竞回报率不在新档位列表中，自动吸附到最高档
+                        if (Array.IndexOf(newSelected, gamePollingRate) == -1)
+                        {
+                            gamePollingRate = newSelected[newSelected.Length - 1];
+                            SaveConfig();
+                        }
+                        // 若当前桌面回报率不在新档位列表中，自动吸附到第一档
+                        if (Array.IndexOf(newSelected, desktopPollingRate) == -1)
+                        {
+                            desktopPollingRate = newSelected[0];
+                            SaveConfig();
+                        }
+
+                        RelayoutRateButtons();
+                        SetGameRateControlsVisibility(autoGameRateEnabled);
+
+                        curHz = curDev.PollingRate > 0 ? curDev.PollingRate : 1000;
+                        UpdateDesktopRateButtonSelection(curHz);
+                        UpdateGameRateButtonSelection(gamePollingRate);
+                        UpdatePollingRateDisplayStates();
+                        UpdateStatusDisplay();
+                    }
+                }
+            }
+        }
+
+        private int[] GetDefaultActivePollingRates(int[] supported)
+        {
+            if (supported == null || supported.Length == 0)
+            {
+                return new int[] { 1000 };
+            }
+
+            List<int> sorted = new List<int>();
+            for (int i = 0; i < supported.Length; i++)
+            {
+                if (supported[i] > 0 && !sorted.Contains(supported[i]))
+                {
+                    sorted.Add(supported[i]);
+                }
+            }
+            sorted.Sort();
+
+            if (sorted.Count <= 4)
+            {
+                return sorted.ToArray();
+            }
+
+            // 如果超过4个档位，则将最高的4档显示出来，低档位则放在配置列表内，使用户可配置
+            int skipCount = sorted.Count - 4;
+            List<int> top4 = new List<int>();
+            for (int i = skipCount; i < sorted.Count; i++)
+            {
+                top4.Add(sorted[i]);
+            }
+            return top4.ToArray();
+        }
+
+        private void SaveCustomPollingRates(string devId, int[] rates)
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.CreateSubKey(ConfigRegistryKey + @"\CustomPollingRates"))
+                {
+                    if (key != null && rates != null && rates.Length > 0)
+                    {
+                        List<string> strList = new List<string>();
+                        for (int i = 0; i < rates.Length; i++) strList.Add(rates[i].ToString());
+                        string s = string.Join(",", strList.ToArray());
+                        string k = string.IsNullOrEmpty(devId) ? "Default" : devId.Replace("\\", "_").Replace("/", "_");
+                        key.SetValue(k, s);
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private int[] LoadCustomPollingRates(string devId, int[] fallbackRates)
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.OpenSubKey(ConfigRegistryKey + @"\CustomPollingRates"))
+                {
+                    if (key != null)
+                    {
+                        string k = string.IsNullOrEmpty(devId) ? "Default" : devId.Replace("\\", "_").Replace("/", "_");
+                        object val = key.GetValue(k);
+                        if (val != null)
+                        {
+                            string str = val.ToString();
+                            string[] parts = str.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                            List<int> list = new List<int>();
+                            for (int i = 0; i < parts.Length; i++)
+                            {
+                                int v;
+                                if (int.TryParse(parts[i].Trim(), out v) && v > 0)
+                                {
+                                    list.Add(v);
+                                }
+                            }
+                            if (list.Count > 0)
+                            {
+                                list.Sort();
+                                while (list.Count > 5)
+                                {
+                                    list.RemoveAt(0); // 最多 5 档快捷显示，裁剪超额低档位
+                                }
+                                return list.ToArray();
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+            return fallbackRates;
+        }
+
         private void OpenGameProcessManager()
         {
             var dlg = new GameProcessManagerForm(dpiScale, monitoredGameProcesses, fallbackFullscreenEnabled, (updatedList, fb) => {
@@ -1729,15 +2225,15 @@ namespace RazerBatteryTray
         {
             using (var form = new DevicePriorityForm(activeDevices, dpiScale))
             {
-                if (form.ShowDialog(this) == DialogResult.OK)
-                {
-                    RefreshBatteryStatus(true);
-                }
+                form.ShowDialog(this);
+                activeDevices.RemoveAll(d => DeviceManager.IsDeviceHidden(d.DeviceId) || (!string.IsNullOrEmpty(d.HardwareFingerprint) && DeviceManager.IsDeviceHidden(d.HardwareFingerprint)));
+                RefreshBatteryStatus(true);
             }
         }
 
         private void OpenAddDeviceWizard()
         {
+            activeDevices.RemoveAll(d => DeviceManager.IsDeviceHidden(d.DeviceId) || (!string.IsNullOrEmpty(d.HardwareFingerprint) && DeviceManager.IsDeviceHidden(d.HardwareFingerprint)));
             using (var form = new AddDeviceWizardForm(activeDevices, dpiScale))
             {
                 if (form.ShowDialog(this) == DialogResult.OK)
@@ -2005,7 +2501,19 @@ namespace RazerBatteryTray
 
                 // Card 2
                 int card2Y = card1Y + card1H + (int)(12 * dpiScale);
-                int card2H = autoGameRateEnabled ? (int)(218 * dpiScale) : (int)(148 * dpiScale);
+                int card2H;
+                if (!autoGameRateEnabled && !autoGameDpiEnabled)
+                {
+                    card2H = (int)(148 * dpiScale);
+                }
+                else if (autoGameRateEnabled && autoGameDpiEnabled)
+                {
+                    card2H = (int)(255 * dpiScale);
+                }
+                else
+                {
+                    card2H = (int)(218 * dpiScale);
+                }
                 if (cardPerformance != null)
                 {
                     cardPerformance.Location = new Point(padX, card2Y);

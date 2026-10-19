@@ -119,7 +119,8 @@ namespace RazerBatteryTray
                         IsConnected = d.IsConnected && !d.IsSleeping,
                         AccentColor = d.BrandColor,
                         PriorityIndex = i + 1,
-                        IsCustom = d.IsCustom
+                        IsCustom = d.IsCustom,
+                        HardwareFingerprint = d.HardwareFingerprint
                     });
                 }
                 reorderControl.ResetPositions();

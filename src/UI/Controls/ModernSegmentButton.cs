@@ -57,8 +57,8 @@ namespace RazerBatteryTray
             Invalidate();
         }
 
-        protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); isHovered = true; Invalidate(); }
-        protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); isHovered = false; Invalidate(); }
+        protected override void OnMouseEnter(EventArgs e) { if (!Enabled) return; base.OnMouseEnter(e); isHovered = true; Invalidate(); }
+        protected override void OnMouseLeave(EventArgs e) { if (!Enabled) return; base.OnMouseLeave(e); isHovered = false; Invalidate(); }
 
         protected override void OnPaint(PaintEventArgs pevent)
         {
@@ -74,7 +74,22 @@ namespace RazerBatteryTray
             Color border;
             Color fg;
 
-            if (isSelected)
+            if (!Enabled)
+            {
+                if (isSelected)
+                {
+                    bg = Color.FromArgb(20, 32, 24);
+                    border = Color.FromArgb(35, 75, 45);
+                    fg = Color.FromArgb(90, 140, 105);
+                }
+                else
+                {
+                    bg = Color.FromArgb(22, 24, 30);
+                    border = Color.FromArgb(36, 40, 48);
+                    fg = Color.FromArgb(80, 85, 95);
+                }
+            }
+            else if (isSelected)
             {
                 if (isPreset)
                 {

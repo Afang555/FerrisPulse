@@ -28,9 +28,9 @@ namespace RazerBatteryTray
         private static readonly object hidLock = new object();
         private const string CacheRegistryKey = @"Software\RazerBatteryTray\NuphyCache";
 
-        public static int CachedBatteryPercent = 60;
+        public static int CachedBatteryPercent = -1;
         public static bool CachedIsCharging = false;
-        public static string CachedDeviceName = "NuPhy WH80";
+        public static string CachedDeviceName = "";
         public static DateTime CachedLastUpdated = DateTime.MinValue;
         public static string CachedCommandPath = null;
 
@@ -709,7 +709,7 @@ namespace RazerBatteryTray
                 }
 
                 string devName = GetModelName(foundPid, foundName);
-                if (string.IsNullOrEmpty(devName)) devName = !string.IsNullOrEmpty(CachedDeviceName) ? CachedDeviceName : "NuPhy WH80";
+                if (string.IsNullOrEmpty(devName)) devName = !string.IsNullOrEmpty(CachedDeviceName) ? CachedDeviceName : ("NuPhy 键盘 (PID: " + foundPid.ToString("X4") + ")");
                 CachedDeviceName = devName;
 
                 int displayBattery = (foundBattery >= 0) ? foundBattery : (CachedBatteryPercent > 0 ? CachedBatteryPercent : -1);

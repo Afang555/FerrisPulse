@@ -125,19 +125,27 @@ namespace RazerBatteryTray
             }
             contextMenu.Items.Add(rateMenu);
 
-            // Submenu: 全屏游戏自动回报率
-            autoGameRateMenu = new ToolStripMenuItem("全屏游戏自动回报率");
+            // Submenu: 全屏游戏自动切换 (回报率与 DPI)
+            autoGameRateMenu = new ToolStripMenuItem("全屏游戏自动切换");
             ConfigureSubMenuDropDown(autoGameRateMenu.DropDown);
 
-            autoGameRateToggleItem = new ToolStripMenuItem("启用全屏自动切换", null, (s, e) => {
+            autoGameRateToggleItem = new ToolStripMenuItem("启用全屏自动回报率", null, (s, e) => {
                 SetAutoGameRateEnabled(!autoGameRateEnabled);
                 autoGameRateToggleItem.Checked = autoGameRateEnabled;
             });
             autoGameRateToggleItem.Checked = autoGameRateEnabled;
             autoGameRateMenu.DropDownItems.Add(autoGameRateToggleItem);
+
+            autoGameDpiToggleItem = new ToolStripMenuItem("启用全屏自动 DPI", null, (s, e) => {
+                SetAutoGameDpiEnabled(!autoGameDpiEnabled);
+                autoGameDpiToggleItem.Checked = autoGameDpiEnabled;
+            });
+            autoGameDpiToggleItem.Checked = autoGameDpiEnabled;
+            autoGameRateMenu.DropDownItems.Add(autoGameDpiToggleItem);
+
             autoGameRateMenu.DropDownItems.Add(new ToolStripSeparator());
 
-            var gameRateSub = new ToolStripMenuItem("全屏电竞回报率");
+            gameRateSub = new ToolStripMenuItem("全屏电竞回报率");
             ConfigureSubMenuDropDown(gameRateSub.DropDown);
             for (int i = 0; i < pollingRateValues.Length; i++)
             {
@@ -157,6 +165,28 @@ namespace RazerBatteryTray
                 gameRateSub.DropDownItems.Add(sub);
             }
             autoGameRateMenu.DropDownItems.Add(gameRateSub);
+
+            gameDpiSub = new ToolStripMenuItem("全屏电竞 DPI 档位");
+            ConfigureSubMenuDropDown(gameDpiSub.DropDown);
+            for (int i = 1; i <= 5; i++)
+            {
+                int stageNum = i;
+                var sub = new ToolStripMenuItem(string.Format("第 {0} 档", stageNum), null, (s, e) => {
+                    SetGameDpiStageFromUI(stageNum);
+                    foreach (ToolStripItem it in gameDpiSub.DropDownItems)
+                    {
+                        var tmi = it as ToolStripMenuItem;
+                        if (tmi != null && tmi.Tag is int)
+                        {
+                            tmi.Checked = ((int)tmi.Tag == stageNum);
+                        }
+                    }
+                });
+                sub.Tag = stageNum;
+                sub.Checked = (gameDpiStage == stageNum);
+                gameDpiSub.DropDownItems.Add(sub);
+            }
+            autoGameRateMenu.DropDownItems.Add(gameDpiSub);
 
             var notifySub = new ToolStripMenuItem("切换提醒方式");
             ConfigureSubMenuDropDown(notifySub.DropDown);

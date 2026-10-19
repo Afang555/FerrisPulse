@@ -47,6 +47,8 @@ namespace RazerBatteryTray
         public double XyRatio { get; set; }
         public int PollingRate { get; set; }
         public int[] SupportedPollingRates { get; set; }
+        public int MaxPollingRate { get; set; }
+        public string CustomTooltip { get; set; }
         public bool IsPrimary { get; set; }
 
         public static bool IsDefaultGenericName(string name)
@@ -105,15 +107,33 @@ namespace RazerBatteryTray
         {
             get
             {
+                if (Brand == "HyperX" || Brand == "极度未知") return Color.FromArgb(226, 0, 43);
                 if (Category == DeviceCategory.Headset) return Color.FromArgb(90, 160, 255);
                 if (Category == DeviceCategory.Earbuds) return Color.FromArgb(179, 136, 255);
                 if (Category == DeviceCategory.Gamepad) return Color.FromArgb(192, 132, 252);
                 if (Category == DeviceCategory.Dongle) return Color.FromArgb(255, 183, 77);
                 if (Category == DeviceCategory.Generic) return Color.FromArgb(144, 164, 174);
+                if (Brand == "Apple") return Color.FromArgb(200, 200, 205);
+                if (Brand == "Beats") return Color.FromArgb(226, 35, 26);
+                if (Brand == "Valkyrie" || Brand == "瓦尔基里") return Color.FromArgb(255, 64, 129);
+                if (Brand == "LAMZU" || Brand == "蓝图") return Color.FromArgb(0, 188, 212);
+                if (Brand == "VAXEE") return Color.FromArgb(255, 179, 0);
+                if (Brand == "WLmouse") return Color.FromArgb(171, 71, 188);
+                if (Brand == "Pulsar") return Color.FromArgb(239, 83, 80);
+                if (Brand == "Endgame Gear") return Color.FromArgb(255, 112, 67);
+                if (Brand == "Attack Shark") return Color.FromArgb(38, 198, 218);
+                if (Brand == "Mchose" || Brand == "迈从") return Color.FromArgb(126, 87, 194);
+                if (Brand == "Keychron") return Color.FromArgb(255, 87, 34);
+                if (Brand == "Dareu" || Brand == "达尔优") return Color.FromArgb(255, 152, 0);
+                if (Brand == "Delux" || Brand == "多彩") return Color.FromArgb(3, 169, 244);
+                if (Brand == "SteelSeries" || Brand == "赛睿") return Color.FromArgb(255, 102, 0);
+                if (Brand == "Corsair" || Brand == "美商海盗船") return Color.FromArgb(255, 214, 0);
+                if (Brand == "ASUS" || Brand == "ROG") return Color.FromArgb(229, 9, 20);
                 if (Brand == "NuPhy" || Category == DeviceCategory.Keyboard) return Color.FromArgb(0, 229, 255);
                 if (Brand == "Logitech" || Brand == "罗技") return Color.FromArgb(0, 174, 239);
-                if (Brand == "Rapoo") return Color.FromArgb(0, 185, 255);
+                if (Brand == "Rapoo" || Brand == "雷柏") return Color.FromArgb(0, 185, 255);
                 if (Brand == "VGN") return Color.FromArgb(255, 120, 0);
+                if (Brand == "Razer" || Brand == "雷蛇") return Color.FromArgb(0, 230, 118);
                 return Color.FromArgb(0, 230, 118);
             }
         }
@@ -207,12 +227,20 @@ namespace RazerBatteryTray
                 {
                     if (DeviceName != null)
                     {
+                        if (DeviceName.Contains("SUPERSTRIKE") || DeviceName.Contains("GPW 5") || DeviceName.Contains("GPW5") || DeviceName.Contains("X3")) return "GPW 5";
+                        if (DeviceName.Contains("SUPERLIGHT 2C") || DeviceName.Contains("GPW 4") || DeviceName.Contains("GPW4") || DeviceName.Contains("2C")) return "GPW 4";
+                        if (DeviceName.Contains("SUPERLIGHT 2 DEX") || DeviceName.Contains("GPX 2 DEX")) return "GPX 2 DEX";
                         if (DeviceName.Contains("SUPERLIGHT 2")) return "GPX 2";
                         if (DeviceName.Contains("SUPERLIGHT")) return "GPX";
+                        if (DeviceName.Contains("PRO 2")) return "G PRO 2";
                         if (DeviceName.Contains("PRO Wireless") || DeviceName.Contains("GPW")) return "GPW";
+                        if (DeviceName.Contains("G PRO HERO") || DeviceName.Contains("G PRO 游戏鼠标")) return "G PRO";
+                        if (DeviceName.Contains("POWERPLAY")) return "POWERPLAY";
                         if (DeviceName.Contains("G502 X")) return "G502 X";
                         if (DeviceName.Contains("G502")) return "G502";
+                        if (DeviceName.Contains("G309")) return "G309";
                         if (DeviceName.Contains("G304") || DeviceName.Contains("G305")) return "G304";
+                        if (DeviceName.Contains("G203") || DeviceName.Contains("G102")) return "G102/G203";
                         if (DeviceName.Contains("G703")) return "G703";
                         if (DeviceName.Contains("G903")) return "G903";
                         if (DeviceName.Contains("G913") || DeviceName.Contains("G915")) return "G913 TKL";
@@ -224,7 +252,7 @@ namespace RazerBatteryTray
                     return "罗技无线鼠标";
                 }
 
-                if (Brand == "Rapoo")
+                if (Brand == "Rapoo" || Brand == "雷柏")
                 {
                     if (DeviceName != null)
                     {
@@ -245,7 +273,7 @@ namespace RazerBatteryTray
                     }
                     return "VT 无线鼠标";
                 }
-                else if (Brand == "Razer")
+                else if (Brand == "Razer" || Brand == "雷蛇")
                 {
                     int pid = 0;
                     if (!string.IsNullOrEmpty(DeviceId) && DeviceId.StartsWith("Razer:1532:", StringComparison.OrdinalIgnoreCase))
@@ -260,6 +288,38 @@ namespace RazerBatteryTray
                     }
                     return RazerDeviceHelper.GetRazerDisplayName(pid, DeviceName);
                 }
+
+                if (Brand == "Valkyrie" || Brand == "瓦尔基里")
+                {
+                    if (!string.IsNullOrEmpty(DeviceName))
+                    {
+                        return DeviceName.Replace("Valkyrie", "").Replace("瓦尔基里", "").Trim();
+                    }
+                    return "瓦尔基里设备";
+                }
+
+                if (Brand == "Apple" || Brand == "Beats")
+                {
+                    if (!string.IsNullOrEmpty(DeviceName)) return DeviceName;
+                    return Brand == "Beats" ? "Beats 耳机" : "Apple 设备";
+                }
+
+                if (Brand == "LAMZU" || Brand == "蓝图")
+                {
+                    if (!string.IsNullOrEmpty(DeviceName))
+                    {
+                        string s = DeviceName.Replace("LAMZU", "").Trim();
+                        return s.Length > 0 ? ("LAMZU " + s) : DeviceName;
+                    }
+                    return "LAMZU 鼠标";
+                }
+
+                if (Brand == "VAXEE")
+                {
+                    if (!string.IsNullOrEmpty(DeviceName)) return DeviceName;
+                    return "VAXEE 无线鼠标";
+                }
+
                 return DeviceName ?? "未知外设";
             }
         }

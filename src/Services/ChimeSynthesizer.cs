@@ -28,8 +28,9 @@ namespace RazerBatteryTray
 {
     public static class ChimeSynthesizer
     {
-        private static byte[] ascendingChimeBytes = null;
-        private static byte[] descendingChimeBytes = null;
+        private static SoundPlayer ascendingPlayer = null;
+        private static SoundPlayer descendingPlayer = null;
+        private static readonly object chimeSyncLock = new object();
 
         public static void PlayAscendingChime()
         {
@@ -37,23 +38,26 @@ namespace RazerBatteryTray
             {
                 try
                 {
-                    if (ascendingChimeBytes == null)
+                    lock (chimeSyncLock)
                     {
-                        ascendingChimeBytes = GenerateBellChimeWav(new double[] { 784.0, 1046.5 }, new double[] { 0.09, 0.18 });
-                    }
-                    if (ascendingChimeBytes != null)
-                    {
-                        using (var ms = new MemoryStream(ascendingChimeBytes))
+                        if (ascendingPlayer == null)
                         {
-                            using (var sp = new SoundPlayer(ms))
+                            byte[] wav = GenerateBellChimeWav(new double[] { 784.0, 1046.5 }, new double[] { 0.10, 0.26 });
+                            if (wav != null)
                             {
-                                sp.PlaySync();
+                                var ms = new MemoryStream(wav);
+                                ascendingPlayer = new SoundPlayer(ms);
+                                ascendingPlayer.Load();
                             }
                         }
-                    }
-                    else
-                    {
-                        SystemSounds.Asterisk.Play();
+                        if (ascendingPlayer != null)
+                        {
+                            ascendingPlayer.PlaySync();
+                        }
+                        else
+                        {
+                            SystemSounds.Asterisk.Play();
+                        }
                     }
                 }
                 catch
@@ -69,23 +73,26 @@ namespace RazerBatteryTray
             {
                 try
                 {
-                    if (descendingChimeBytes == null)
+                    lock (chimeSyncLock)
                     {
-                        descendingChimeBytes = GenerateBellChimeWav(new double[] { 1046.5, 784.0 }, new double[] { 0.09, 0.18 });
-                    }
-                    if (descendingChimeBytes != null)
-                    {
-                        using (var ms = new MemoryStream(descendingChimeBytes))
+                        if (descendingPlayer == null)
                         {
-                            using (var sp = new SoundPlayer(ms))
+                            byte[] wav = GenerateBellChimeWav(new double[] { 1046.5, 784.0 }, new double[] { 0.10, 0.26 });
+                            if (wav != null)
                             {
-                                sp.PlaySync();
+                                var ms = new MemoryStream(wav);
+                                descendingPlayer = new SoundPlayer(ms);
+                                descendingPlayer.Load();
                             }
                         }
-                    }
-                    else
-                    {
-                        SystemSounds.Asterisk.Play();
+                        if (descendingPlayer != null)
+                        {
+                            descendingPlayer.PlaySync();
+                        }
+                        else
+                        {
+                            SystemSounds.Asterisk.Play();
+                        }
                     }
                 }
                 catch
@@ -472,6 +479,8 @@ namespace RazerBatteryTray
                 int sampleRate = 44100;
                 int totalSamples = 0;
                 for (int i = 0; i < durations.Length; i++) totalSamples += (int)(sampleRate * durations[i]);
+                int silenceSamples = (int)(sampleRate * 0.15); // 150ms 尾部静音缓冲，彻底根除音频驱动提前截断
+                totalSamples += silenceSamples;
                 int dataChunkSize = totalSamples * 2;
 
                 using (MemoryStream ms = new MemoryStream())
@@ -496,16 +505,30 @@ namespace RazerBatteryTray
                         {
                             double f = freqs[n];
                             int nSamples = (int)(sampleRate * durations[n]);
-                            double decayRate = (n == 0) ? 14.0 : 8.0;
+                            double decayRate = (n == 0) ? 12.0 : 6.5;
                             for (int i = 0; i < nSamples; i++)
                             {
                                 double t = (double)i / sampleRate;
-                                double env = (t < 0.006) ? (t / 0.006) : Math.Exp(-(t - 0.006) * decayRate);
-                                double s = (Math.Sin(2.0 * Math.PI * f * t) * 0.75 + Math.Sin(4.0 * Math.PI * f * t) * 0.20 + Math.Sin(6.0 * Math.PI * f * t) * 0.05) * env;
-                                short sample = (short)(s * 2400);
+                                double env = (t < 0.005) ? (t / 0.005) : Math.Exp(-(t - 0.005) * decayRate);
+                                double remTime = durations[n] - t;
+                                if (remTime < 0.025)
+                                {
+                                    env *= (remTime / 0.025);
+                                }
+                                double s = (Math.Sin(2.0 * Math.PI * f * t) * 0.75 +
+                                            Math.Sin(4.0 * Math.PI * f * t) * 0.20 +
+                                            Math.Sin(6.0 * Math.PI * f * t) * 0.05) * env;
+                                short sample = (short)(s * 2500);
                                 bw.Write(sample);
                             }
                         }
+
+                        // 填充 150ms 纯零静音缓冲
+                        for (int i = 0; i < silenceSamples; i++)
+                        {
+                            bw.Write((short)0);
+                        }
+
                         bw.Flush();
                         return ms.ToArray();
                     }

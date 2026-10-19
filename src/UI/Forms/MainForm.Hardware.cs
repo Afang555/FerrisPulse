@@ -42,8 +42,8 @@ namespace RazerBatteryTray
             {
                 try
                 {
-                    // 1. 若用户未开启 DPI OSD 提示，彻底不轮询硬件，零开销零占用
-                    if (!dpiOsdEnabled)
+                    // 1. 若用户未开启 DPI OSD 提示且主窗口未在前台显示，休眠省电零占用
+                    if (!dpiOsdEnabled && !this.Visible)
                     {
                         Thread.Sleep(800);
                         continue;
@@ -140,46 +140,58 @@ namespace RazerBatteryTray
                         }
                     }
 
-                    // 3. 雷柏设备极速 DPI 监听
+                    // 3. 雷柏设备极速 DPI 与物理按键/档位/回报率监听
                     int rDpi, rStage, rCount;
                     if (RapooDeviceHelper.FastQueryDpi(out rDpi, out rStage, out rCount))
                     {
                         int validRCount = rCount > 0 ? rCount : 5;
-                        if (rDpi >= 100 && rDpi <= 40000 && rStage >= 1 && rStage <= validRCount)
+                        if (rDpi >= 50 && rDpi <= 40000 && rStage >= 1 && rStage <= validRCount)
                         {
                             if (lastMonitoredRapooDpi != -1 && (rDpi != lastMonitoredRapooDpi || rStage != lastMonitoredRapooStage))
                             {
-                                if (pendingRapooDpiCandidate == rDpi && pendingRapooStageCandidate == rStage)
+                                int newDpi = rDpi;
+                                int newStage = rStage;
+                                int newCount = rCount;
+                                try
                                 {
-                                    pendingRapooDpiCandidate = -1;
-                                    pendingRapooStageCandidate = -1;
-                                    int newDpi = rDpi;
-                                    int newStage = rStage;
-                                    int newCount = rCount;
-                                    try
-                                    {
-                                        this.BeginInvoke(new Action(() => {
-                                            OnDpiChanged("Rapoo", newDpi, newStage, newCount);
-                                        }));
-                                    }
-                                    catch { }
-                                    lastMonitoredRapooDpi = rDpi;
-                                    lastMonitoredRapooStage = rStage;
+                                    this.BeginInvoke(new Action(() => {
+                                        OnDpiChanged("Rapoo", newDpi, newStage, newCount);
+                                    }));
                                 }
-                                else
-                                {
-                                    pendingRapooDpiCandidate = rDpi;
-                                    pendingRapooStageCandidate = rStage;
-                                }
+                                catch { }
+                                lastMonitoredRapooDpi = rDpi;
+                                lastMonitoredRapooStage = rStage;
                             }
                             else
                             {
-                                pendingRapooDpiCandidate = -1;
-                                pendingRapooStageCandidate = -1;
                                 lastMonitoredRapooDpi = rDpi;
                                 lastMonitoredRapooStage = rStage;
                             }
                         }
+                    }
+
+                    int rRate;
+                    if (RapooDeviceHelper.FastQueryPollingRate(out rRate))
+                    {
+                        if (lastMonitoredRapooRate != -1 && rRate != lastMonitoredRapooRate)
+                        {
+                            int newRate = rRate;
+                            try
+                            {
+                                this.BeginInvoke(new Action(() => {
+                                    if (selectedDevice != null && (selectedDevice.Brand == "Rapoo" || selectedDevice.Brand == "雷柏"))
+                                    {
+                                        selectedDevice.PollingRate = newRate;
+                                        desktopPollingRate = newRate;
+                                        UpdateDesktopRateButtonSelection(newRate);
+                                        UpdatePollingRateDisplayStates();
+                                        UpdateStatusDisplay();
+                                    }
+                                }));
+                            }
+                            catch { }
+                        }
+                        lastMonitoredRapooRate = rRate;
                     }
 
                     // 4. 瓦尔基里设备极速 DPI 监听
@@ -220,6 +232,48 @@ namespace RazerBatteryTray
                                 pendingValkyrieStageCandidate = -1;
                                 lastMonitoredValkyrieDpi = vDpi;
                                 lastMonitoredValkyrieStage = vStage;
+                            }
+                        }
+                    }
+
+                    // 5. 罗技设备极速 DPI 监听
+                    int lDpiX, lDpiY, lStage, lCount;
+                    if (LogitechDeviceHelper.FastQueryDpi(out lDpiX, out lDpiY, out lStage, out lCount))
+                    {
+                        int validLCount = lCount > 0 ? lCount : 5;
+                        if (lDpiX >= 50 && lDpiX <= 50000 && lStage >= 1 && lStage <= validLCount)
+                        {
+                            if (lastMonitoredLogitechDpi != -1 && (lDpiX != lastMonitoredLogitechDpi || lStage != lastMonitoredLogitechStage))
+                            {
+                                if (pendingLogitechDpiCandidate == lDpiX && pendingLogitechStageCandidate == lStage)
+                                {
+                                    pendingLogitechDpiCandidate = -1;
+                                    pendingLogitechStageCandidate = -1;
+                                    int newDpi = lDpiX;
+                                    int newStage = lStage;
+                                    int newCount = lCount;
+                                    try
+                                    {
+                                        this.BeginInvoke(new Action(() => {
+                                            OnDpiChanged("Logitech", newDpi, newStage, newCount);
+                                        }));
+                                    }
+                                    catch { }
+                                    lastMonitoredLogitechDpi = lDpiX;
+                                    lastMonitoredLogitechStage = lStage;
+                                }
+                                else
+                                {
+                                    pendingLogitechDpiCandidate = lDpiX;
+                                    pendingLogitechStageCandidate = lStage;
+                                }
+                            }
+                            else
+                            {
+                                pendingLogitechDpiCandidate = -1;
+                                pendingLogitechStageCandidate = -1;
+                                lastMonitoredLogitechDpi = lDpiX;
+                                lastMonitoredLogitechStage = lStage;
                             }
                         }
                     }
@@ -264,6 +318,10 @@ namespace RazerBatteryTray
                     {
                         matched.DpiY = RazerDeviceHelper.CachedDpiY;
                     }
+                    else if (brand == "Rapoo" && RapooDeviceHelper.CachedDpiY > 0)
+                    {
+                        matched.DpiY = RapooDeviceHelper.CachedDpiY;
+                    }
                     else
                     {
                         matched.DpiY = newDpi;
@@ -276,6 +334,7 @@ namespace RazerBatteryTray
             {
                 if (brand == "Valkyrie" && ValkyrieDeviceHelper.CachedDpiY > 0) curDpiY = ValkyrieDeviceHelper.CachedDpiY;
                 else if (brand == "Razer" && RazerDeviceHelper.CachedDpiY > 0) curDpiY = RazerDeviceHelper.CachedDpiY;
+                else if (brand == "Rapoo" && RapooDeviceHelper.CachedDpiY > 0) curDpiY = RapooDeviceHelper.CachedDpiY;
                 else curDpiY = newDpi;
             }
 
@@ -316,40 +375,29 @@ namespace RazerBatteryTray
                             tileRapooDpi.Badge = "";
                             tileRapooDpi.Invalidate();
                         }
+                    }
 
-                        if (dpiMenu != null && dpiMenu.DropDownItems.Count > 0)
+                    // Highlight corresponding segment button (for all mice: Razer, Valkyrie, Logitech, Rapoo)
+                    if (btnDpiStages != null)
+                    {
+                        for (int i = 0; i < btnDpiStages.Length; i++)
                         {
-                            var curItem = dpiMenu.DropDownItems[0] as ToolStripMenuItem;
-                            if (curItem != null)
-                            {
-                                curItem.Text = string.Format("当前: {0} DPI", newDpi);
-                            }
+                            bool isCur = (newStage > 0 && i < stageCount)
+                                ? (i == (newStage - 1))
+                                : (i < dpiStageValues.Length && dpiStageValues[i] == newDpi);
+                            btnDpiStages[i].Selected = isCur;
                         }
                     }
-                    else
-                    {
-                        // Highlight corresponding segment button
-                        if (btnDpiStages != null)
-                        {
-                            for (int i = 0; i < btnDpiStages.Length; i++)
-                            {
-                                bool isCur = (newStage > 0 && i < stageCount)
-                                    ? (i == (newStage - 1))
-                                    : (i < dpiStageValues.Length && dpiStageValues[i] == newDpi);
-                                btnDpiStages[i].Selected = isCur;
-                            }
-                        }
 
-                        // Update Tray DPI submenu checks
-                        if (dpiMenu != null)
+                    // Update Tray DPI submenu checks
+                    if (dpiMenu != null)
+                    {
+                        foreach (ToolStripItem item in dpiMenu.DropDownItems)
                         {
-                            foreach (ToolStripItem item in dpiMenu.DropDownItems)
+                            var mi = item as ToolStripMenuItem;
+                            if (mi != null && mi.Tag != null)
                             {
-                                var mi = item as ToolStripMenuItem;
-                                if (mi != null && mi.Tag != null)
-                                {
-                                    mi.Checked = ((int)mi.Tag == newDpi);
-                                }
+                                mi.Checked = ((int)mi.Tag == newDpi);
                             }
                         }
                     }
@@ -374,23 +422,39 @@ namespace RazerBatteryTray
                     }
                 }
 
-                if (curDev != null && curDev.Brand == "Rapoo")
+                if (curDev != null && (curDev.Brand == "Rapoo" || curDev.Brand == "雷柏"))
                 {
+                    int dpiY = dpi;
+                    if (targetStage > 0 && curDev.DpiStagesY != null && curDev.DpiStagesY.Length >= targetStage)
+                    {
+                        dpiY = curDev.DpiStagesY[targetStage - 1];
+                    }
+                    else if (curDev.DpiY > 0)
+                    {
+                        dpiY = curDev.DpiY;
+                    }
+
                     if (targetStage > 0)
+                    {
                         RapooDeviceHelper.SetRapooDpiStage(targetStage);
+                    }
                     else
-                        RapooDeviceHelper.SetRapooDpi(dpi);
+                    {
+                        RapooDeviceHelper.SetRapooXyDpi(dpi, dpiY, curDev.DpiStage > 0 ? curDev.DpiStage : 1);
+                    }
 
                     this.BeginInvoke(new Action(() => {
                         if (curDev != null)
                         {
                             curDev.Dpi = dpi;
+                            curDev.DpiY = dpiY;
                             if (targetStage > 0) curDev.DpiStage = targetStage;
                         }
+                        HighlightDpiStage(targetStage > 0 ? targetStage : 1);
                         OnDpiChanged("Rapoo", dpi, targetStage > 0 ? targetStage : 1, dpiStageValues.Length);
                     }));
                 }
-                else if (curDev != null && curDev.Brand == "Valkyrie")
+                else if (curDev != null && (curDev.Brand == "Valkyrie" || curDev.Brand == "瓦尔基里"))
                 {
                     int dpiY = dpi;
                     if (targetStage > 0 && curDev.DpiStagesY != null && curDev.DpiStagesY.Length >= targetStage)
@@ -419,6 +483,30 @@ namespace RazerBatteryTray
                             if (targetStage > 0) curDev.DpiStage = targetStage;
                         }
                         OnDpiChanged("Valkyrie", dpi, targetStage > 0 ? targetStage : 1, dpiStageValues.Length);
+                    }));
+                }
+                else if (curDev != null && (curDev.Brand == "Logitech" || curDev.Brand == "罗技"))
+                {
+                    int dpiY = dpi;
+                    if (targetStage > 0 && curDev.DpiStagesY != null && curDev.DpiStagesY.Length >= targetStage)
+                    {
+                        dpiY = curDev.DpiStagesY[targetStage - 1];
+                    }
+                    else if (curDev.DpiY > 0)
+                    {
+                        dpiY = curDev.DpiY;
+                    }
+
+                    LogitechDeviceHelper.SetLogitechDpi(dpi, dpiY, curDev.DeviceId);
+
+                    this.BeginInvoke(new Action(() => {
+                        if (curDev != null)
+                        {
+                            curDev.Dpi = dpi;
+                            curDev.DpiY = dpiY;
+                            if (targetStage > 0) curDev.DpiStage = targetStage;
+                        }
+                        OnDpiChanged("Logitech", dpi, targetStage > 0 ? targetStage : 1, dpiStageValues.Length);
                     }));
                 }
                 else
@@ -480,13 +568,21 @@ namespace RazerBatteryTray
                 bool ok = false;
                 if (!isGamingActive)
                 {
-                    if (curDev != null && curDev.Brand == "Rapoo")
+                    if (curDev != null && (curDev.Brand == "Valkyrie" || curDev.Brand == "瓦尔基里"))
+                    {
+                        ok = ValkyrieDeviceHelper.SetValkyriePollingRate(hz);
+                    }
+                    else if (curDev != null && (curDev.Brand == "Logitech" || curDev.Brand == "罗技"))
+                    {
+                        ok = LogitechDeviceHelper.SetLogitechPollingRate(hz, curDev.DeviceId);
+                    }
+                    else if (curDev != null && (curDev.Brand == "Rapoo" || curDev.Brand == "雷柏"))
                     {
                         ok = RapooDeviceHelper.SetRapooPollingRate(hz);
                     }
-                    else if (curDev != null && curDev.Brand == "Valkyrie")
+                    else if (curDev != null && (curDev.Brand == "Razer" || curDev.Brand == "雷蛇" || (curDev.DeviceId != null && curDev.DeviceId.StartsWith("Razer:1532:"))))
                     {
-                        ok = ValkyrieDeviceHelper.SetValkyriePollingRate(hz);
+                        ok = RazerDeviceHelper.SetRazerPollingRate(hz, curDev.DeviceId);
                     }
                     else
                     {
@@ -519,15 +615,123 @@ namespace RazerBatteryTray
             UpdatePollingRateDisplayStates();
             SaveConfig();
 
-            if (isGamingActive)
+            if (isGamingActive && autoGameRateEnabled)
             {
                 ApplyGamePollingRate();
             }
         }
 
+        public void SetGameDpiStageFromUI(int stage)
+        {
+            if (stage < 1 || stage > 5) stage = 1;
+            gameDpiStage = stage;
+            UpdateGameDpiButtonSelection(stage);
+            UpdatePollingRateDisplayStates();
+            SaveConfig();
+
+            if (isGamingActive && autoGameDpiEnabled)
+            {
+                ApplyGameDpiStage();
+            }
+        }
+
+        public void SetAutoGameOptEnabled(bool enabled)
+        {
+            isUpdatingUI = true;
+            try
+            {
+                if (chkAutoGameOpt != null) chkAutoGameOpt.Checked = enabled;
+
+                if (!enabled)
+                {
+                    autoGameRateEnabled = false;
+                    autoGameDpiEnabled = false;
+                    if (chkAutoGameRate != null) chkAutoGameRate.Checked = false;
+                    if (chkAutoGameDpi != null) chkAutoGameDpi.Checked = false;
+                    if (autoGameRateToggleItem != null) autoGameRateToggleItem.Checked = false;
+                    if (autoGameDpiToggleItem != null) autoGameDpiToggleItem.Checked = false;
+                    if (btnManageGames != null) btnManageGames.Visible = false;
+                }
+                else
+                {
+                    // 总开关开启时，默认启用回报率与 DPI 优化
+                    autoGameRateEnabled = true;
+                    autoGameDpiEnabled = true;
+                    if (chkAutoGameRate != null) chkAutoGameRate.Checked = true;
+                    if (chkAutoGameDpi != null) chkAutoGameDpi.Checked = true;
+                    if (autoGameRateToggleItem != null) autoGameRateToggleItem.Checked = true;
+                    if (autoGameDpiToggleItem != null) autoGameDpiToggleItem.Checked = true;
+                }
+
+                UpdatePerformanceCardHeightForCurrentDevice();
+                UpdatePollingRateDisplayStates();
+            }
+            finally
+            {
+                isUpdatingUI = false;
+            }
+            SaveConfig();
+
+            if (!enabled && isGamingActive)
+            {
+                RestoreDesktopPollingRate();
+                RestoreDesktopDpiStage();
+                isGamingActive = false;
+            }
+            else if (enabled && isGamingActive)
+            {
+                ApplyGamePollingRate();
+                ApplyGameDpiStage();
+            }
+        }
+
+        private void SetAutoGameDpiEnabled(bool enabled)
+        {
+            autoGameDpiEnabled = enabled;
+            isUpdatingUI = true;
+            try
+            {
+                if (chkAutoGameDpi != null) chkAutoGameDpi.Checked = enabled;
+                if (autoGameDpiToggleItem != null) autoGameDpiToggleItem.Checked = enabled;
+
+                bool anyEnabled = (autoGameRateEnabled || autoGameDpiEnabled);
+                if (chkAutoGameOpt != null) chkAutoGameOpt.Checked = anyEnabled;
+
+                UpdatePerformanceCardHeightForCurrentDevice();
+                UpdatePollingRateDisplayStates();
+            }
+            finally
+            {
+                isUpdatingUI = false;
+            }
+            SaveConfig();
+
+            // If toggled off while in game, restore desktop DPI immediately
+            if (!enabled && isGamingActive)
+            {
+                if (desktopDpiStage > 0)
+                {
+                    RestoreDesktopDpiStage();
+                }
+                if (!autoGameRateEnabled)
+                {
+                    isGamingActive = false;
+                }
+            }
+            else if (enabled && isGamingActive)
+            {
+                ApplyGameDpiStage();
+            }
+        }
+
         private void CycleRapooPollingRate()
         {
-            // Rapoo polling rate adjustment disabled as requested
+            var curDev = selectedDevice;
+            int curRate = (curDev != null && curDev.PollingRate > 0) ? curDev.PollingRate : 1000;
+            int[] rates = new int[] { 125, 250, 500, 1000, 2000, 4000, 8000 };
+            int idx = Array.IndexOf(rates, curRate);
+            int nextRate = rates[(idx + 1) % rates.Length];
+            SetRapooPollingRateManual(nextRate);
         }
 
         public void SetRapooPollingRateManual(int hz)
@@ -564,6 +768,9 @@ namespace RazerBatteryTray
                 if (chkAutoGameRate != null) chkAutoGameRate.Checked = enabled;
                 if (autoGameRateToggleItem != null) autoGameRateToggleItem.Checked = enabled;
 
+                bool anyEnabled = (autoGameRateEnabled || autoGameDpiEnabled);
+                if (chkAutoGameOpt != null) chkAutoGameOpt.Checked = anyEnabled;
+
                 UpdatePerformanceCardHeightForCurrentDevice();
                 UpdatePollingRateDisplayStates();
             }
@@ -576,8 +783,15 @@ namespace RazerBatteryTray
             // If toggled off while in game, restore desktop rate immediately
             if (!enabled && isGamingActive)
             {
-                isGamingActive = false;
                 RestoreDesktopPollingRate();
+                if (!autoGameDpiEnabled)
+                {
+                    isGamingActive = false;
+                }
+            }
+            else if (enabled && isGamingActive)
+            {
+                ApplyGamePollingRate();
             }
         }
 
@@ -601,10 +815,10 @@ namespace RazerBatteryTray
             gameMonitorTimer = new System.Windows.Forms.Timer();
             gameMonitorTimer.Interval = 1000;
             gameMonitorTimer.Tick += (s, e) => {
-                if (!autoGameRateEnabled) return;
+                if (!autoGameRateEnabled && !autoGameDpiEnabled) return;
                 var curDev = selectedDevice;
                 if (curDev == null) return;
-                if (curDev.Brand != "Razer" && curDev.Brand != "Rapoo" && curDev.Brand != "Valkyrie") return;
+                if (curDev.Brand != "Razer" && curDev.Brand != "Valkyrie" && curDev.Brand != "Logitech" && curDev.Brand != "罗技" && curDev.Brand != "Rapoo") return;
 
                 string procTitle = "";
                 bool isGame = false;
@@ -652,7 +866,14 @@ namespace RazerBatteryTray
                     if (inGameTickCount >= 2 && !isGamingActive)
                     {
                         isGamingActive = true;
-                        ApplyGamePollingRate();
+                        if (autoGameRateEnabled)
+                        {
+                            ApplyGamePollingRate();
+                        }
+                        if (autoGameDpiEnabled)
+                        {
+                            ApplyGameDpiStage();
+                        }
                     }
                 }
                 else
@@ -662,7 +883,14 @@ namespace RazerBatteryTray
                     if (outOfGameTickCount >= 2 && isGamingActive)
                     {
                         isGamingActive = false;
-                        RestoreDesktopPollingRate();
+                        if (autoGameRateEnabled)
+                        {
+                            RestoreDesktopPollingRate();
+                        }
+                        if (autoGameDpiEnabled && desktopDpiStage > 0)
+                        {
+                            RestoreDesktopDpiStage();
+                        }
                     }
                 }
             };
@@ -680,8 +908,10 @@ namespace RazerBatteryTray
                 bool ok = false;
                 for (int attempt = 0; attempt < 3; attempt++)
                 {
-                    if (brand == "Rapoo") ok = RapooDeviceHelper.SetRapooPollingRate(targetHz);
-                    else if (brand == "Valkyrie") ok = ValkyrieDeviceHelper.SetValkyriePollingRate(targetHz);
+                    if (brand == "Valkyrie" || brand == "瓦尔基里") ok = ValkyrieDeviceHelper.SetValkyriePollingRate(targetHz);
+                    else if (brand == "Logitech" || brand == "罗技") ok = LogitechDeviceHelper.SetLogitechPollingRate(targetHz, curDev.DeviceId);
+                    else if (brand == "Rapoo" || brand == "雷柏") ok = RapooDeviceHelper.SetRapooPollingRate(targetHz);
+                    else if (brand == "Razer" || brand == "雷蛇" || (curDev.DeviceId != null && curDev.DeviceId.StartsWith("Razer:1532:"))) ok = RazerDeviceHelper.SetRazerPollingRate(targetHz, curDev.DeviceId);
                     else ok = RazerDeviceHelper.SetRazerPollingRate(targetHz, curDev.DeviceId);
                     if (ok) break;
                     Thread.Sleep(80);
@@ -698,14 +928,32 @@ namespace RazerBatteryTray
 
                         if (gameRateNotifyOsd && osdForm != null)
                         {
-                            osdForm.ShowRate(targetHz, "电竞回报率", brand);
+                            if (autoGameDpiEnabled)
+                            {
+                                int gameDpiVal = (dpiStageValues != null && gameDpiStage - 1 < dpiStageValues.Length) ? dpiStageValues[gameDpiStage - 1] : 800;
+                                osdForm.ShowRate(targetHz, string.Format("电竞加速 · 第{0}档 ({1} DPI)", gameDpiStage, gameDpiVal), brand);
+                            }
+                            else
+                            {
+                                osdForm.ShowRate(targetHz, "电竞回报率", brand);
+                            }
                         }
 
                         if (gameRateNotifyToast)
                         {
-                            SafeShowBalloonTip(3000, "FerrisPulse · 电竞回报率",
-                                string.Format("检测到电竞游戏运行，已自动将鼠标回报率提升至 {0} Hz", targetHz),
-                                ToolTipIcon.Info);
+                            if (autoGameDpiEnabled)
+                            {
+                                int gameDpiVal = (dpiStageValues != null && gameDpiStage - 1 < dpiStageValues.Length) ? dpiStageValues[gameDpiStage - 1] : 800;
+                                SafeShowBalloonTip(3000, "FerrisPulse · 电竞加速已激活",
+                                    string.Format("检测到电竞游戏运行，回报率提升至 {0} Hz，DPI 切换至第 {1} 档 ({2} DPI)", targetHz, gameDpiStage, gameDpiVal),
+                                    ToolTipIcon.Info);
+                            }
+                            else
+                            {
+                                SafeShowBalloonTip(3000, "FerrisPulse · 电竞回报率",
+                                    string.Format("检测到电竞游戏运行，已自动将鼠标回报率提升至 {0} Hz", targetHz),
+                                    ToolTipIcon.Info);
+                            }
                         }
 
                         if (gameRateNotifySound)
@@ -728,8 +976,10 @@ namespace RazerBatteryTray
                 bool ok = false;
                 for (int attempt = 0; attempt < 3; attempt++)
                 {
-                    if (brand == "Rapoo") ok = RapooDeviceHelper.SetRapooPollingRate(targetHz);
-                    else if (brand == "Valkyrie") ok = ValkyrieDeviceHelper.SetValkyriePollingRate(targetHz);
+                    if (brand == "Valkyrie" || brand == "瓦尔基里") ok = ValkyrieDeviceHelper.SetValkyriePollingRate(targetHz);
+                    else if (brand == "Logitech" || brand == "罗技") ok = LogitechDeviceHelper.SetLogitechPollingRate(targetHz, curDev.DeviceId);
+                    else if (brand == "Rapoo" || brand == "雷柏") ok = RapooDeviceHelper.SetRapooPollingRate(targetHz);
+                    else if (brand == "Razer" || brand == "雷蛇" || (curDev.DeviceId != null && curDev.DeviceId.StartsWith("Razer:1532:"))) ok = RazerDeviceHelper.SetRazerPollingRate(targetHz, curDev.DeviceId);
                     else ok = RazerDeviceHelper.SetRazerPollingRate(targetHz, curDev.DeviceId);
                     if (ok) break;
                     Thread.Sleep(80);
@@ -746,14 +996,30 @@ namespace RazerBatteryTray
 
                         if (gameRateNotifyOsd && osdForm != null)
                         {
-                            osdForm.ShowRate(targetHz, "常规回报率", brand);
+                            if (autoGameDpiEnabled && curDev.DpiStage > 0)
+                            {
+                                osdForm.ShowRate(targetHz, string.Format("常规桌面 · 第{0}档 ({1} DPI)", curDev.DpiStage, curDev.Dpi), brand);
+                            }
+                            else
+                            {
+                                osdForm.ShowRate(targetHz, "常规回报率", brand);
+                            }
                         }
 
                         if (gameRateNotifyToast)
                         {
-                            SafeShowBalloonTip(3000, "FerrisPulse · 常规回报率",
-                                string.Format("已切回桌面，鼠标回报率已恢复至 {0} Hz 节能状态", targetHz),
-                                ToolTipIcon.Info);
+                            if (autoGameDpiEnabled && curDev.DpiStage > 0)
+                            {
+                                SafeShowBalloonTip(3000, "FerrisPulse · 常规桌面",
+                                    string.Format("已切回桌面，回报率恢复至 {0} Hz，DPI 恢复至第 {1} 档 ({2} DPI)", targetHz, curDev.DpiStage, curDev.Dpi),
+                                    ToolTipIcon.Info);
+                            }
+                            else
+                            {
+                                SafeShowBalloonTip(3000, "FerrisPulse · 常规回报率",
+                                    string.Format("已切回桌面，鼠标回报率已恢复至 {0} Hz 节能状态", targetHz),
+                                    ToolTipIcon.Info);
+                            }
                         }
 
                         if (gameRateNotifySound)
@@ -765,9 +1031,171 @@ namespace RazerBatteryTray
             }) { IsBackground = true }.Start();
         }
 
-        private static byte[] ascendingChimeBytes = null;
-        private static byte[] descendingChimeBytes = null;
+        private void ApplyGameDpiStage()
+        {
+            var curDev = selectedDevice;
+            if (curDev == null) return;
 
+            // Remember current desktop stage if not already remembered
+            if (desktopDpiStage <= 0)
+            {
+                desktopDpiStage = (curDev.DpiStage > 0) ? curDev.DpiStage : 1;
+            }
+
+            int targetStage = gameDpiStage;
+            if (targetStage < 1 || targetStage > 5) targetStage = 1;
+
+            int targetDpi = (dpiStageValues != null && targetStage - 1 < dpiStageValues.Length) ? dpiStageValues[targetStage - 1] : 800;
+            string brand = curDev.Brand;
+
+            new Thread(() => {
+                bool ok = false;
+                for (int attempt = 0; attempt < 3; attempt++)
+                {
+                    if (brand == "Rapoo" || brand == "雷柏")
+                    {
+                        ok = RapooDeviceHelper.SetRapooDpiStage(targetStage);
+                    }
+                    else if (brand == "Valkyrie" || brand == "瓦尔基里")
+                    {
+                        int[] stagesX = (curDev.DpiStages != null && curDev.DpiStages.Length > 0) ? curDev.DpiStages : dpiStageList.ToArray();
+                        int[] stagesY = (curDev.DpiStagesY != null && curDev.DpiStagesY.Length == stagesX.Length) ? curDev.DpiStagesY : stagesX;
+                        ok = ValkyrieDeviceHelper.UpdateValkyrieHardwareStages(targetStage, stagesX, stagesY);
+                    }
+                    else if (brand == "Logitech" || brand == "罗技")
+                    {
+                        int targetDpiY = targetDpi;
+                        if (curDev.DpiStagesY != null && curDev.DpiStagesY.Length >= targetStage)
+                        {
+                            targetDpiY = curDev.DpiStagesY[targetStage - 1];
+                        }
+                        ok = LogitechDeviceHelper.SetLogitechDpi(targetDpi, targetDpiY, curDev.DeviceId);
+                    }
+                    else // Razer or other
+                    {
+                        string rzDevId = curDev.DeviceId;
+                        ok = RazerDeviceHelper.SetRazerDpiStage(targetStage, rzDevId);
+                    }
+
+                    if (ok) break;
+                    Thread.Sleep(80);
+                }
+
+                if (ok)
+                {
+                    this.BeginInvoke(new Action(() => {
+                        curDev.Dpi = targetDpi;
+                        curDev.DpiStage = targetStage;
+                        HighlightDpiStage(targetStage);
+                        UpdateStatusDisplay();
+                        UpdatePollingRateDisplayStates();
+
+                        if (!autoGameRateEnabled)
+                        {
+                            if (gameRateNotifyOsd && osdForm != null)
+                            {
+                                osdForm.ShowDpi(targetDpi, targetStage, dpiStageValues != null ? dpiStageValues.Length : 5, brand);
+                            }
+
+                            if (gameRateNotifyToast)
+                            {
+                                SafeShowBalloonTip(3000, "FerrisPulse · 电竞 DPI",
+                                    string.Format("检测到电竞游戏运行，已自动将鼠标 DPI 切换至第 {0} 档 ({1} DPI)", targetStage, targetDpi),
+                                    ToolTipIcon.Info);
+                            }
+
+                            if (gameRateNotifySound)
+                            {
+                                PlayAscendingChime();
+                            }
+                        }
+                    }));
+                }
+            }) { IsBackground = true }.Start();
+        }
+
+        private void RestoreDesktopDpiStage()
+        {
+            var curDev = selectedDevice;
+            if (curDev == null || desktopDpiStage <= 0) return;
+
+            int targetStage = desktopDpiStage;
+            if (targetStage < 1 || targetStage > 5) targetStage = 1;
+
+            int targetDpi = (dpiStageValues != null && targetStage - 1 < dpiStageValues.Length) ? dpiStageValues[targetStage - 1] : 1600;
+            string brand = curDev.Brand;
+            int prevStage = desktopDpiStage;
+            desktopDpiStage = 0; // reset memory
+
+            new Thread(() => {
+                bool ok = false;
+                for (int attempt = 0; attempt < 3; attempt++)
+                {
+                    if (brand == "Rapoo" || brand == "雷柏")
+                    {
+                        ok = RapooDeviceHelper.SetRapooDpiStage(targetStage);
+                    }
+                    else if (brand == "Valkyrie" || brand == "瓦尔基里")
+                    {
+                        int[] stagesX = (curDev.DpiStages != null && curDev.DpiStages.Length > 0) ? curDev.DpiStages : dpiStageList.ToArray();
+                        int[] stagesY = (curDev.DpiStagesY != null && curDev.DpiStagesY.Length == stagesX.Length) ? curDev.DpiStagesY : stagesX;
+                        ok = ValkyrieDeviceHelper.UpdateValkyrieHardwareStages(targetStage, stagesX, stagesY);
+                    }
+                    else if (brand == "Logitech" || brand == "罗技")
+                    {
+                        int targetDpiY = targetDpi;
+                        if (curDev.DpiStagesY != null && curDev.DpiStagesY.Length >= targetStage)
+                        {
+                            targetDpiY = curDev.DpiStagesY[targetStage - 1];
+                        }
+                        ok = LogitechDeviceHelper.SetLogitechDpi(targetDpi, targetDpiY, curDev.DeviceId);
+                    }
+                    else // Razer or other
+                    {
+                        string rzDevId = curDev.DeviceId;
+                        ok = RazerDeviceHelper.SetRazerDpiStage(targetStage, rzDevId);
+                    }
+
+                    if (ok) break;
+                    Thread.Sleep(80);
+                }
+
+                if (ok)
+                {
+                    this.BeginInvoke(new Action(() => {
+                        curDev.Dpi = targetDpi;
+                        curDev.DpiStage = targetStage;
+                        HighlightDpiStage(targetStage);
+                        UpdateStatusDisplay();
+                        UpdatePollingRateDisplayStates();
+
+                        if (!autoGameRateEnabled)
+                        {
+                            if (gameRateNotifyOsd && osdForm != null)
+                            {
+                                osdForm.ShowDpi(targetDpi, targetStage, dpiStageValues != null ? dpiStageValues.Length : 5, brand);
+                            }
+
+                            if (gameRateNotifyToast)
+                            {
+                                SafeShowBalloonTip(3000, "FerrisPulse · 常规 DPI",
+                                    string.Format("已切回桌面，鼠标 DPI 已恢复至第 {0} 档 ({1} DPI) 办公状态", prevStage, targetDpi),
+                                    ToolTipIcon.Info);
+                            }
+
+                            if (gameRateNotifySound)
+                            {
+                                PlayDescendingChime();
+                            }
+                        }
+                    }));
+                }
+            }) { IsBackground = true }.Start();
+        }
+
+        private static SoundPlayer ascendingPlayer = null;
+        private static SoundPlayer descendingPlayer = null;
+        private static readonly object chimeSyncLock = new object();
 
         private static byte[] GenerateBellChimeWav(double[] freqs, double[] durations)
         {
@@ -776,6 +1204,8 @@ namespace RazerBatteryTray
                 int sampleRate = 44100;
                 int totalSamples = 0;
                 for (int i = 0; i < durations.Length; i++) totalSamples += (int)(sampleRate * durations[i]);
+                int silenceSamples = (int)(sampleRate * 0.15); // 150ms 尾部静音缓冲，彻底根除音频驱动提前截断
+                totalSamples += silenceSamples;
                 int dataChunkSize = totalSamples * 2;
 
                 using (MemoryStream ms = new MemoryStream())
@@ -800,16 +1230,30 @@ namespace RazerBatteryTray
                         {
                             double f = freqs[n];
                             int nSamples = (int)(sampleRate * durations[n]);
-                            double decayRate = (n == 0) ? 14.0 : 8.0;
+                            double decayRate = (n == 0) ? 12.0 : 6.5;
                             for (int i = 0; i < nSamples; i++)
                             {
                                 double t = (double)i / sampleRate;
-                                double env = (t < 0.006) ? (t / 0.006) : Math.Exp(-(t - 0.006) * decayRate);
-                                double s = (Math.Sin(2.0 * Math.PI * f * t) * 0.75 + Math.Sin(4.0 * Math.PI * f * t) * 0.20 + Math.Sin(6.0 * Math.PI * f * t) * 0.05) * env;
-                                short sample = (short)(s * 2400);
+                                double env = (t < 0.005) ? (t / 0.005) : Math.Exp(-(t - 0.005) * decayRate);
+                                double remTime = durations[n] - t;
+                                if (remTime < 0.025)
+                                {
+                                    env *= (remTime / 0.025);
+                                }
+                                double s = (Math.Sin(2.0 * Math.PI * f * t) * 0.75 +
+                                            Math.Sin(4.0 * Math.PI * f * t) * 0.20 +
+                                            Math.Sin(6.0 * Math.PI * f * t) * 0.05) * env;
+                                short sample = (short)(s * 2500);
                                 bw.Write(sample);
                             }
                         }
+
+                        // 填充 150ms 纯零静音缓冲
+                        for (int i = 0; i < silenceSamples; i++)
+                        {
+                            bw.Write((short)0);
+                        }
+
                         bw.Flush();
                         return ms.ToArray();
                     }
@@ -823,64 +1267,70 @@ namespace RazerBatteryTray
 
         private static void PlayAscendingChime()
         {
-            new Thread(() => {
+            ThreadPool.QueueUserWorkItem(_ => {
                 try
                 {
-                    if (ascendingChimeBytes == null)
+                    lock (chimeSyncLock)
                     {
-                        ascendingChimeBytes = GenerateBellChimeWav(new double[] { 784.0, 1046.5 }, new double[] { 0.09, 0.18 });
-                    }
-                    if (ascendingChimeBytes != null)
-                    {
-                        using (var ms = new MemoryStream(ascendingChimeBytes))
+                        if (ascendingPlayer == null)
                         {
-                            using (var sp = new SoundPlayer(ms))
+                            byte[] wav = GenerateBellChimeWav(new double[] { 784.0, 1046.5 }, new double[] { 0.10, 0.26 });
+                            if (wav != null)
                             {
-                                sp.PlaySync();
+                                var ms = new MemoryStream(wav);
+                                ascendingPlayer = new SoundPlayer(ms);
+                                ascendingPlayer.Load();
                             }
                         }
-                    }
-                    else
-                    {
-                        System.Media.SystemSounds.Asterisk.Play();
+                        if (ascendingPlayer != null)
+                        {
+                            ascendingPlayer.PlaySync();
+                        }
+                        else
+                        {
+                            System.Media.SystemSounds.Asterisk.Play();
+                        }
                     }
                 }
                 catch
                 {
                     try { System.Media.SystemSounds.Asterisk.Play(); } catch { }
                 }
-            }) { IsBackground = true }.Start();
+            });
         }
 
         private static void PlayDescendingChime()
         {
-            new Thread(() => {
+            ThreadPool.QueueUserWorkItem(_ => {
                 try
                 {
-                    if (descendingChimeBytes == null)
+                    lock (chimeSyncLock)
                     {
-                        descendingChimeBytes = GenerateBellChimeWav(new double[] { 1046.5, 784.0 }, new double[] { 0.09, 0.18 });
-                    }
-                    if (descendingChimeBytes != null)
-                    {
-                        using (var ms = new MemoryStream(descendingChimeBytes))
+                        if (descendingPlayer == null)
                         {
-                            using (var sp = new SoundPlayer(ms))
+                            byte[] wav = GenerateBellChimeWav(new double[] { 1046.5, 784.0 }, new double[] { 0.10, 0.26 });
+                            if (wav != null)
                             {
-                                sp.PlaySync();
+                                var ms = new MemoryStream(wav);
+                                descendingPlayer = new SoundPlayer(ms);
+                                descendingPlayer.Load();
                             }
                         }
-                    }
-                    else
-                    {
-                        System.Media.SystemSounds.Asterisk.Play();
+                        if (descendingPlayer != null)
+                        {
+                            descendingPlayer.PlaySync();
+                        }
+                        else
+                        {
+                            System.Media.SystemSounds.Asterisk.Play();
+                        }
                     }
                 }
                 catch
                 {
                     try { System.Media.SystemSounds.Asterisk.Play(); } catch { }
                 }
-            }) { IsBackground = true }.Start();
+            });
         }
 
         private void SetAsPrimaryDevice(string deviceId)
@@ -1177,6 +1627,36 @@ namespace RazerBatteryTray
             if (lblNuphyBrightVal != null) lblNuphyBrightVal.Visible = false;
         }
 
+        private void HideAllAutoGameControls()
+        {
+            if (chkAutoGameOpt != null) chkAutoGameOpt.Visible = false;
+            if (chkAutoGameRate != null) chkAutoGameRate.Visible = false;
+            if (chkAutoGameDpi != null) chkAutoGameDpi.Visible = false;
+            if (btnManageGames != null) btnManageGames.Visible = false;
+            if (lblLiveRateBadge != null) lblLiveRateBadge.Visible = false;
+            if (lblGameRateTitle != null) lblGameRateTitle.Visible = false;
+            if (lblGameDpiTitle != null) lblGameDpiTitle.Visible = false;
+            if (btnGameRates != null)
+            {
+                for (int i = 0; i < btnGameRates.Length; i++)
+                {
+                    if (btnGameRates[i] != null) btnGameRates[i].Visible = false;
+                }
+            }
+            if (btnGameDpiStages != null)
+            {
+                for (int i = 0; i < btnGameDpiStages.Length; i++)
+                {
+                    if (btnGameDpiStages[i] != null) btnGameDpiStages[i].Visible = false;
+                }
+            }
+            if (lblNotifyModeTitle != null) lblNotifyModeTitle.Visible = false;
+            if (chkNotifyOsd != null) chkNotifyOsd.Visible = false;
+            if (chkNotifyToast != null) chkNotifyToast.Visible = false;
+            if (chkNotifySound != null) chkNotifySound.Visible = false;
+            if (autoGameRateMenu != null) autoGameRateMenu.Visible = false;
+        }
+
         private void ApplyNuphySettingsToUI()
         {
             if (selectedDevice == null || selectedDevice.Brand != "NuPhy")
@@ -1391,6 +1871,7 @@ namespace RazerBatteryTray
 
             if (tileHeadsetAudio != null) tileHeadsetAudio.Visible = false;
             if (tileRapooDpi != null) tileRapooDpi.Visible = false;
+            if (btnRateManage != null) btnRateManage.Visible = false;
             if (btnGamepadVibrate != null) btnGamepadVibrate.Visible = false;
             if (btnGamepadJoyCpl != null) btnGamepadJoyCpl.Visible = false;
             if (hudThreeLocks != null) hudThreeLocks.Visible = false;
@@ -1406,25 +1887,18 @@ namespace RazerBatteryTray
             bool isHeadset = (info.Category == DeviceCategory.Headset || info.Category == DeviceCategory.Earbuds);
             bool isKeyboard = (info.Category == DeviceCategory.Keyboard);
             bool isDongle = (info.Category == DeviceCategory.Dongle);
-            bool isRapoo = (info.Brand == "Rapoo");
+            bool isRapoo = (info.Brand == "Rapoo" || info.Brand == "雷柏");
 
             bool isLogitech = (info.Brand == "Logitech" || info.Brand == "罗技");
             bool isVgn = (info.Brand == "VGN");
             bool isRazer = (info.Brand == "Razer" || (info.DeviceId != null && info.DeviceId.StartsWith("Razer:1532:")));
-            bool isValkyrieMouse = (info.Brand == "Valkyrie" && info.Category == DeviceCategory.Mouse);
+            bool isValkyrieMouse = ((info.Brand == "Valkyrie" || info.Brand == "瓦尔基里") && info.Category == DeviceCategory.Mouse);
+            bool isLogitechMouse = (isLogitech && info.Category == DeviceCategory.Mouse);
+            bool isRapooMouse = (isRapoo && info.Category == DeviceCategory.Mouse);
 
             int secW = cardPerformance.ClientSize.Width - (int)(32 * dpiScale);
 
-            if (chkAutoGameRate != null) chkAutoGameRate.Visible = false;
-            if (btnManageGames != null) btnManageGames.Visible = false;
-            if (lblLiveRateBadge != null) lblLiveRateBadge.Visible = false;
-            if (lblGameRateTitle != null) lblGameRateTitle.Visible = false;
-            if (btnGameRates != null) { for (int i = 0; i < btnGameRates.Length; i++) if (btnGameRates[i] != null) btnGameRates[i].Visible = false; }
-            if (lblNotifyModeTitle != null) lblNotifyModeTitle.Visible = false;
-            if (chkNotifyOsd != null) chkNotifyOsd.Visible = false;
-            if (chkNotifyToast != null) chkNotifyToast.Visible = false;
-            if (chkNotifySound != null) chkNotifySound.Visible = false;
-            if (autoGameRateMenu != null) autoGameRateMenu.Visible = false;
+            HideAllAutoGameControls();
 
             if (isGamepad)
             {
@@ -1742,7 +2216,7 @@ namespace RazerBatteryTray
                 if (dpiMenu != null) dpiMenu.Visible = false;
                 if (rateMenu != null) rateMenu.Visible = false;
             }
-            else if (isRapoo)
+            else if (isRapoo && !isRapooMouse)
             {
                 AdjustPerformanceCardHeight((int)(160 * dpiScale));
                 if (lblPerfTitle != null) lblPerfTitle.Text = "雷柏鼠标状态与性能测速";
@@ -1849,10 +2323,10 @@ namespace RazerBatteryTray
                 if (rateMenu != null) rateMenu.Visible = false;
             }
 
-            else if (isLogitech)
+            else if (isLogitech && !isLogitechMouse)
             {
                 AdjustPerformanceCardHeight((int)(160 * dpiScale));
-                if (lblPerfTitle != null) lblPerfTitle.Text = "罗技鼠标状态与性能测速";
+                if (lblPerfTitle != null) lblPerfTitle.Text = "罗技外设状态与性能测速";
 
                 // Hide Razer interactive controls
                 if (lblDpiTitle != null) lblDpiTitle.Visible = false;
@@ -1898,47 +2372,74 @@ namespace RazerBatteryTray
                 if (dpiMenu != null) dpiMenu.Visible = false;
                 if (rateMenu != null) rateMenu.Visible = false;
             }
-            else if (isRazer || isValkyrieMouse)
+            else if (isRazer || isValkyrieMouse || isLogitechMouse || isRapooMouse)
             {
-                if (lblPerfTitle != null) lblPerfTitle.Text = isValkyrieMouse ? "瓦尔基里鼠标性能与档位调节" : "鼠标性能与档位调节";
+                if (lblPerfTitle != null)
+                {
+                    if (isValkyrieMouse) lblPerfTitle.Text = "瓦尔基里鼠标性能与档位调节";
+                    else if (isLogitechMouse) lblPerfTitle.Text = "罗技鼠标性能与档位调节";
+                    else if (isRapooMouse) lblPerfTitle.Text = "雷柏鼠标性能与档位调节";
+                    else lblPerfTitle.Text = "鼠标性能与档位调节";
+                }
                 if (rateMenu != null) rateMenu.Visible = true;
 
                 if (lblDpiTitle != null) lblDpiTitle.Visible = true;
                 if (lblRateTitle != null) lblRateTitle.Visible = true;
 
-                int targetPerfH = (isRazer && autoGameRateEnabled) ? (int)(218 * dpiScale) : (int)(148 * dpiScale);
+                bool supportsAutoGameRate = (isRazer || isLogitechMouse || isRapooMouse || isValkyrieMouse);
+                bool isOptExpanded = (autoGameRateEnabled || autoGameDpiEnabled);
+                int targetPerfH = (!supportsAutoGameRate || !isOptExpanded) ? (int)(148 * dpiScale) : (int)(255 * dpiScale);
                 AdjustPerformanceCardHeight(targetPerfH);
 
-                if (chkAutoGameRate != null)
+                bool showExpanded = supportsAutoGameRate && isOptExpanded;
+                if (chkAutoGameOpt != null)
                 {
-                    chkAutoGameRate.Visible = isRazer;
-                    chkAutoGameRate.Checked = autoGameRateEnabled;
+                    chkAutoGameOpt.Visible = supportsAutoGameRate;
+                    chkAutoGameOpt.Checked = isOptExpanded;
                 }
                 if (btnManageGames != null)
                 {
-                    btnManageGames.Visible = isRazer && autoGameRateEnabled;
+                    btnManageGames.Visible = showExpanded;
                 }
-                if (lblGameRateTitle != null) lblGameRateTitle.Visible = isRazer && autoGameRateEnabled;
-                if (btnGameRates != null)
+                if (chkAutoGameDpi != null)
                 {
-                    for (int i = 0; i < btnGameRates.Length; i++)
+                    chkAutoGameDpi.Visible = showExpanded;
+                    chkAutoGameDpi.Checked = autoGameDpiEnabled;
+                }
+                if (lblGameDpiTitle != null) lblGameDpiTitle.Visible = false;
+                if (btnGameDpiStages != null)
+                {
+                    for (int g = 0; g < btnGameDpiStages.Length; g++)
                     {
-                        if (btnGameRates[i] != null)
+                        if (btnGameDpiStages[g] != null)
                         {
-                            btnGameRates[i].Visible = isRazer && autoGameRateEnabled;
-                            if (i < pollingRateValues.Length)
-                            {
-                                btnGameRates[i].Text = pollingRateValues[i] + " Hz";
-                                btnGameRates[i].Selected = (pollingRateValues[i] == gamePollingRate);
-                            }
+                            btnGameDpiStages[g].Visible = showExpanded && (g < dpiStageList.Count);
+                            btnGameDpiStages[g].Enabled = autoGameDpiEnabled;
                         }
                     }
                 }
-                if (lblNotifyModeTitle != null) lblNotifyModeTitle.Visible = isRazer && autoGameRateEnabled;
-                if (chkNotifyOsd != null) { chkNotifyOsd.Visible = isRazer && autoGameRateEnabled; chkNotifyOsd.Checked = gameRateNotifyOsd; }
-                if (chkNotifyToast != null) { chkNotifyToast.Visible = isRazer && autoGameRateEnabled; chkNotifyToast.Checked = gameRateNotifyToast; }
-                if (chkNotifySound != null) { chkNotifySound.Visible = isRazer && autoGameRateEnabled; chkNotifySound.Checked = gameRateNotifySound; }
-                if (autoGameRateMenu != null) autoGameRateMenu.Visible = isRazer;
+                if (chkAutoGameRate != null)
+                {
+                    chkAutoGameRate.Visible = showExpanded;
+                    chkAutoGameRate.Checked = autoGameRateEnabled;
+                }
+                if (lblGameRateTitle != null) lblGameRateTitle.Visible = false;
+                if (btnGameRates != null)
+                {
+                    for (int g = 0; g < btnGameRates.Length; g++)
+                    {
+                        if (btnGameRates[g] != null)
+                        {
+                            btnGameRates[g].Visible = showExpanded && (pollingRateValues != null && g < pollingRateValues.Length);
+                            btnGameRates[g].Enabled = autoGameRateEnabled;
+                        }
+                    }
+                }
+                if (lblNotifyModeTitle != null) lblNotifyModeTitle.Visible = showExpanded;
+                if (chkNotifyOsd != null) { chkNotifyOsd.Visible = showExpanded; chkNotifyOsd.Checked = gameRateNotifyOsd; }
+                if (chkNotifyToast != null) { chkNotifyToast.Visible = showExpanded; chkNotifyToast.Checked = gameRateNotifyToast; }
+                if (chkNotifySound != null) { chkNotifySound.Visible = showExpanded; chkNotifySound.Checked = gameRateNotifySound; }
+                if (autoGameRateMenu != null) autoGameRateMenu.Visible = supportsAutoGameRate;
                 if (info.DpiStages != null && info.DpiStages.Length > 0)
                 {
                     bool differs = false;
@@ -1985,10 +2486,50 @@ namespace RazerBatteryTray
                     btnDpiManage.ForeColor = Color.FromArgb(210, 220, 235);
                 }
 
-                if (info.SupportedPollingRates != null && info.SupportedPollingRates.Length > 0)
+                if (btnRateManage != null)
                 {
-                    pollingRateValues = info.SupportedPollingRates;
+                    btnRateManage.Visible = true;
+                    btnRateManage.NormalColor = Color.FromArgb(28, 33, 45);
+                    btnRateManage.HoverColor = Color.FromArgb(40, 48, 65);
+                    btnRateManage.PressedColor = Color.FromArgb(20, 24, 33);
+                    btnRateManage.BorderColor = Color.FromArgb(65, 75, 95);
+                    btnRateManage.ForeColor = Color.FromArgb(210, 220, 235);
                 }
+
+                int[] baseSupported = (info.SupportedPollingRates != null && info.SupportedPollingRates.Length > 0)
+                    ? info.SupportedPollingRates
+                    : (info.MaxPollingRate == 1000 ? new int[] { 125, 250, 500, 1000 } : new int[] { 125, 250, 500, 1000, 2000, 4000, 8000 });
+
+                int[] defaultActive = GetDefaultActivePollingRates(baseSupported);
+                pollingRateValues = LoadCustomPollingRates(info.DeviceId, defaultActive);
+
+                if (info.PollingRate > 0 && Array.IndexOf(pollingRateValues, info.PollingRate) == -1)
+                {
+                    List<int> list = new List<int>(pollingRateValues);
+                    list.Add(info.PollingRate);
+                    list.Sort();
+                    while (list.Count > 5)
+                    {
+                        int removeIdx = -1;
+                        for (int k = 0; k < list.Count; k++)
+                        {
+                            if (list[k] != info.PollingRate) { removeIdx = k; break; }
+                        }
+                        if (removeIdx >= 0) list.RemoveAt(removeIdx);
+                        else list.RemoveAt(0);
+                    }
+                    pollingRateValues = list.ToArray();
+                }
+
+                if (pollingRateValues != null && pollingRateValues.Length > 5)
+                {
+                    List<int> clampList = new List<int>(pollingRateValues);
+                    clampList.Sort();
+                    while (clampList.Count > 5) clampList.RemoveAt(0);
+                    pollingRateValues = clampList.ToArray();
+                }
+
+                RelayoutRateButtons();
 
                 if (btnRates != null)
                 {
@@ -1999,42 +2540,38 @@ namespace RazerBatteryTray
                             btnRates[i].AccentColor = brandAccent;
                             if (i < pollingRateValues.Length)
                             {
-                                btnRates[i].Text = pollingRateValues[i] + " Hz";
-                                btnRates[i].Visible = true;
-                                if (isValkyrieMouse)
+                                if (isValkyrieMouse || isLogitechMouse || isRapooMouse || isRazer)
                                 {
                                     btnRates[i].Selected = (pollingRateValues[i] == info.PollingRate);
                                 }
-                            }
-                            else
-                            {
-                                btnRates[i].Visible = false;
                             }
                         }
                     }
                 }
 
+                int activeGameRateCount = Math.Max(1, Math.Min(5, (pollingRateValues != null) ? pollingRateValues.Length : 4));
                 if (btnGameRates != null)
                 {
                     for (int i = 0; i < btnGameRates.Length; i++)
                     {
                         if (btnGameRates[i] != null)
                         {
-                            btnGameRates[i].Visible = isRazer && autoGameRateEnabled;
-                            if (i < pollingRateValues.Length)
+                            bool showBtn = supportsAutoGameRate && autoGameRateEnabled && (i < activeGameRateCount);
+                            btnGameRates[i].Visible = showBtn;
+                            if (showBtn && pollingRateValues != null && i < pollingRateValues.Length)
                             {
-                                btnGameRates[i].Text = pollingRateValues[i] + " Hz";
+                                btnGameRates[i].Selected = (pollingRateValues[i] == gamePollingRate);
                             }
                         }
                     }
                 }
 
-                if (isRazer && !autoGameRateEnabled && info.PollingRate > 0 && desktopPollingRate == 0)
+                if (supportsAutoGameRate && !autoGameRateEnabled && info.PollingRate > 0 && desktopPollingRate == 0)
                 {
                     desktopPollingRate = info.PollingRate;
                 }
 
-                if (isRazer)
+                if (supportsAutoGameRate)
                 {
                     UpdatePollingRateDisplayStates();
                 }
@@ -2139,6 +2676,8 @@ namespace RazerBatteryTray
                 if (updateTimer != null) updateTimer.Interval = 3000;
 
                 if (badgePrimary != null) badgePrimary.Visible = false;
+                HideNuphyControls();
+                HideAllAutoGameControls();
 
                 lblDeviceName.Text = "未检测到支持的无线设备";
 

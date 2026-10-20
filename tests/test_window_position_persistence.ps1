@@ -8,7 +8,7 @@ if (-not (Test-Path $regPath)) {
     New-Item -Path $regPath -Force | Out-Null
 }
 
-$expectedX = 1420
+$expectedX = 500
 $expectedY = 260
 
 # 1. 预先向注册表写入特定坐标

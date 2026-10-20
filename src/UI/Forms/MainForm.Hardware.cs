@@ -1866,6 +1866,7 @@ namespace RazerBatteryTray
         private void UpdatePerformanceSection(MouseBatteryInfo info, Color brandAccent)
         {
             if (info == null) return;
+            selectedDevice = info;
 
             HideNuphyControls();
 
@@ -2397,48 +2398,17 @@ namespace RazerBatteryTray
                     chkAutoGameOpt.Visible = supportsAutoGameRate;
                     chkAutoGameOpt.Checked = isOptExpanded;
                 }
-                if (btnManageGames != null)
-                {
-                    btnManageGames.Visible = showExpanded;
-                }
                 if (chkAutoGameDpi != null)
                 {
-                    chkAutoGameDpi.Visible = showExpanded;
                     chkAutoGameDpi.Checked = autoGameDpiEnabled;
-                }
-                if (lblGameDpiTitle != null) lblGameDpiTitle.Visible = false;
-                if (btnGameDpiStages != null)
-                {
-                    for (int g = 0; g < btnGameDpiStages.Length; g++)
-                    {
-                        if (btnGameDpiStages[g] != null)
-                        {
-                            btnGameDpiStages[g].Visible = showExpanded && (g < dpiStageList.Count);
-                            btnGameDpiStages[g].Enabled = autoGameDpiEnabled;
-                        }
-                    }
                 }
                 if (chkAutoGameRate != null)
                 {
-                    chkAutoGameRate.Visible = showExpanded;
                     chkAutoGameRate.Checked = autoGameRateEnabled;
                 }
-                if (lblGameRateTitle != null) lblGameRateTitle.Visible = false;
-                if (btnGameRates != null)
-                {
-                    for (int g = 0; g < btnGameRates.Length; g++)
-                    {
-                        if (btnGameRates[g] != null)
-                        {
-                            btnGameRates[g].Visible = showExpanded && (pollingRateValues != null && g < pollingRateValues.Length);
-                            btnGameRates[g].Enabled = autoGameRateEnabled;
-                        }
-                    }
-                }
-                if (lblNotifyModeTitle != null) lblNotifyModeTitle.Visible = showExpanded;
-                if (chkNotifyOsd != null) { chkNotifyOsd.Visible = showExpanded; chkNotifyOsd.Checked = gameRateNotifyOsd; }
-                if (chkNotifyToast != null) { chkNotifyToast.Visible = showExpanded; chkNotifyToast.Checked = gameRateNotifyToast; }
-                if (chkNotifySound != null) { chkNotifySound.Visible = showExpanded; chkNotifySound.Checked = gameRateNotifySound; }
+                if (chkNotifyOsd != null) chkNotifyOsd.Checked = gameRateNotifyOsd;
+                if (chkNotifyToast != null) chkNotifyToast.Checked = gameRateNotifyToast;
+                if (chkNotifySound != null) chkNotifySound.Checked = gameRateNotifySound;
                 if (autoGameRateMenu != null) autoGameRateMenu.Visible = supportsAutoGameRate;
                 if (info.DpiStages != null && info.DpiStages.Length > 0)
                 {
@@ -2549,22 +2519,8 @@ namespace RazerBatteryTray
                     }
                 }
 
-                int activeGameRateCount = Math.Max(1, Math.Min(5, (pollingRateValues != null) ? pollingRateValues.Length : 4));
-                if (btnGameRates != null)
-                {
-                    for (int i = 0; i < btnGameRates.Length; i++)
-                    {
-                        if (btnGameRates[i] != null)
-                        {
-                            bool showBtn = supportsAutoGameRate && autoGameRateEnabled && (i < activeGameRateCount);
-                            btnGameRates[i].Visible = showBtn;
-                            if (showBtn && pollingRateValues != null && i < pollingRateValues.Length)
-                            {
-                                btnGameRates[i].Selected = (pollingRateValues[i] == gamePollingRate);
-                            }
-                        }
-                    }
-                }
+                RelayoutPerformanceControls();
+                SetGameRateControlsVisibility(isOptExpanded);
 
                 if (supportsAutoGameRate && !autoGameRateEnabled && info.PollingRate > 0 && desktopPollingRate == 0)
                 {

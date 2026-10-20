@@ -9,9 +9,13 @@ foreach ($tf in $testFiles) {
     $psi.FileName = "powershell.exe"
     $psi.Arguments = "-ExecutionPolicy Bypass -NoProfile -File `"$($tf.FullName)`""
     $psi.UseShellExecute = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
     $psi.CreateNoWindow = $true
     
     $p = [System.Diagnostics.Process]::Start($psi)
+    $stdoutTask = $p.StandardOutput.ReadToEndAsync()
+    $stderrTask = $p.StandardError.ReadToEndAsync()
     $finished = $p.WaitForExit(8000) # 8秒看门狗超时，防止任何测试脚本无休止卡死
     if (-not $finished) {
         try { $p.Kill() } catch { }
@@ -28,6 +32,8 @@ foreach ($tf in $testFiles) {
         $allPassed = $false
         $summary += "[FAIL (" + $p.ExitCode + ")] " + $tf.Name
         Write-Host " -> FAILED with code " + $p.ExitCode -ForegroundColor Red
+        Write-Host ($stdoutTask.Result) -ForegroundColor Gray
+        Write-Host ($stderrTask.Result) -ForegroundColor Magenta
     }
 }
 

@@ -472,6 +472,7 @@ namespace RazerBatteryTray
                 if (!isUpdatingUI) { gameRateNotifySound = chkNotifySound.Checked; SaveConfig(); }
             };
             cardPerformance.Controls.Add(chkNotifySound);
+            RelayoutPerformanceControls();
 
             // Rapoo Status Tile (Displayed when Rapoo device is selected - full width, DPI only)
             int tileH = (int)(74 * dpiScale);
@@ -1230,17 +1231,27 @@ namespace RazerBatteryTray
             }
             RelayoutRateButtons();
 
+            bool isRazerMouse = (selectedDevice != null &&
+                                 selectedDevice.Category == DeviceCategory.Mouse &&
+                                 (selectedDevice.Brand == "Razer" || (selectedDevice.DeviceId != null && selectedDevice.DeviceId.StartsWith("Razer:1532:"))));
+            bool isLogitechMouse = (selectedDevice != null && selectedDevice.Category == DeviceCategory.Mouse && (selectedDevice.Brand == "Logitech" || selectedDevice.Brand == "罗技"));
+            bool isRapooMouse = (selectedDevice != null && selectedDevice.Category == DeviceCategory.Mouse && (selectedDevice.Brand == "Rapoo" || selectedDevice.Brand == "雷柏"));
+            bool isValkyrieMouse = (selectedDevice != null && selectedDevice.Category == DeviceCategory.Mouse && (selectedDevice.Brand == "Valkyrie" || selectedDevice.Brand == "瓦尔基里"));
+            bool supportsAutoGameRate = (isRazerMouse || isLogitechMouse || isRapooMouse || isValkyrieMouse);
+
             // Row 3: 全屏游戏自动优化总开关 + 游戏管理 (恒定 Y = 112)
             int gameSwY = (int)(112 * dpiScale);
             int gap = (int)(6 * dpiScale);
             bool isOptExpanded = (autoGameRateEnabled || autoGameDpiEnabled);
-            int chkOptW = isOptExpanded ? (int)(160 * dpiScale) : secW;
+            bool showExpanded = supportsAutoGameRate && isOptExpanded;
+            int chkOptW = showExpanded ? (int)(160 * dpiScale) : secW;
             int btnMgrW = secW - (int)(160 * dpiScale) - gap;
 
             if (chkAutoGameOpt != null)
             {
                 chkAutoGameOpt.Location = new Point(cPad, gameSwY);
                 chkAutoGameOpt.Size = new Size(chkOptW, (int)(26 * dpiScale));
+                chkAutoGameOpt.Visible = supportsAutoGameRate;
             }
             if (btnManageGames != null)
             {
@@ -1248,6 +1259,7 @@ namespace RazerBatteryTray
                 btnManageGames.Location = new Point(btnMgrX, gameSwY);
                 btnManageGames.Size = new Size(btnMgrW, (int)(26 * dpiScale));
                 btnManageGames.CornerRadius = (int)(5 * dpiScale);
+                btnManageGames.Visible = showExpanded;
             }
 
             int availableW = secW - lblW;
@@ -1259,6 +1271,7 @@ namespace RazerBatteryTray
             {
                 chkAutoGameDpi.Location = new Point(cPad, r4Y);
                 chkAutoGameDpi.Size = new Size(lblW, segH);
+                chkAutoGameDpi.Visible = showExpanded;
             }
             if (btnGameDpiStages != null)
             {
@@ -1276,6 +1289,7 @@ namespace RazerBatteryTray
                             btnGameDpiStages[i].Text = valText;
                             toolTipTop.SetToolTip(btnGameDpiStages[i], string.Format("全屏电竞第 {0} 档: {1} DPI", i + 1, valText));
                             btnGameDpiStages[i].Enabled = autoGameDpiEnabled;
+                            btnGameDpiStages[i].Visible = showExpanded;
                         }
                         else
                         {
@@ -1291,6 +1305,7 @@ namespace RazerBatteryTray
             {
                 chkAutoGameRate.Location = new Point(cPad, r5Y);
                 chkAutoGameRate.Size = new Size(lblW, segH);
+                chkAutoGameRate.Visible = showExpanded;
             }
             if (btnGameRates != null)
             {
@@ -1316,6 +1331,7 @@ namespace RazerBatteryTray
                             string tip = string.Format("全屏电竞回报率: {0} Hz · 延迟 {1:F3} ms", hzVal, 1000.0 / hzVal);
                             toolTipTop.SetToolTip(btnGameRates[i], tip);
                             btnGameRates[i].Enabled = autoGameRateEnabled;
+                            btnGameRates[i].Visible = showExpanded;
                         }
                         else
                         {
@@ -1331,6 +1347,7 @@ namespace RazerBatteryTray
             {
                 lblNotifyModeTitle.Location = new Point(cPad, r6Y + (int)(1 * dpiScale));
                 lblNotifyModeTitle.Size = new Size((int)(62 * dpiScale), (int)(20 * dpiScale));
+                lblNotifyModeTitle.Visible = showExpanded;
             }
             int notifStartX = cPad + (int)(64 * dpiScale);
             int notifW = (secW - (int)(64 * dpiScale)) / 3;
@@ -1338,16 +1355,19 @@ namespace RazerBatteryTray
             {
                 chkNotifyOsd.Location = new Point(notifStartX, r6Y);
                 chkNotifyOsd.Size = new Size(notifW, (int)(22 * dpiScale));
+                chkNotifyOsd.Visible = showExpanded;
             }
             if (chkNotifyToast != null)
             {
                 chkNotifyToast.Location = new Point(notifStartX + notifW, r6Y);
                 chkNotifyToast.Size = new Size(notifW, (int)(22 * dpiScale));
+                chkNotifyToast.Visible = showExpanded;
             }
             if (chkNotifySound != null)
             {
                 chkNotifySound.Location = new Point(notifStartX + notifW * 2, r6Y);
                 chkNotifySound.Size = new Size(notifW, (int)(22 * dpiScale));
+                chkNotifySound.Visible = showExpanded;
             }
         }
 

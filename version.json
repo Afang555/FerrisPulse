@@ -1,22 +1,15 @@
 ﻿{
-    "latestVersion":  "2.1.1",
-    "releaseDate":  "2026-10-20",
-    "minSupportedVersion":  "1.0.0",
-    "downloadUrl":  "https://gitee.com/Ferris-echo/ferris-pulse/releases/download/v2.1.1/FerrisPulse.exe",
-    "sha256":  "9faa250549b54ebbbe7bc10309237bafea8d8a0918ce4e8ca513576217e4bfa4",
-    "fileSize":  824320,
-    "changelog":  [
-                      "一、 功能与体验革新",
-                      "【XY轴DPI独立调节】新增鼠标 X/Y 轴灵敏度独立分开调校，内置 1:1、4:3、16:10 等电竞比例快捷联动胶囊与双轴自适应 HUD 悬浮 OSD；",
-                      "【游戏自动调节加入DPI】全屏游戏自动优化现已正式加入专属 DPI 切换，进退游戏自动秒级升降档位，配备盲操 HUD 与提示音；",
-                      "【正式支持低回报率选项】正式加入 125Hz、250Hz、500Hz 等节能档位，日常办公更省电、降低低配 CPU 占用，满足复古游戏手感；",
-                      "【Windows原生展开动画】点击托盘呼出 100% 重现首次开启软件的 Windows 原生缩放展开动效，原位就地弹出，彻底消灭白框闪烁；",
-                      "二、 品牌协议深度融入与外设适配",
-                      "【罗技/雷柏等协议深度融入】深度融入罗技、雷柏、瓦尔基里等品牌协议，免开后台直接调节 DPI、回报率与游戏自动调节；",
-                      "【Apple & Beats 全系适配】原生支持 AirPods 全系与 Beats 家族全系列耳机，加入真配对白名单杜绝路人误扫，修正真实蓝牙名称；",
-                      "【HyperX 飓风三原生支持】新增极度未知 HyperX 飓风三 (Cloud III Wireless) 无线耳机电量与静音感知（特别鸣谢群友“rm -rf /*”的代码贡献！）；",
-                      "【瓦尔基里键盘电量深度修复】VK 全系机械键盘物理电量读取全面恢复正常，告别“免驱”退化，完善键鼠同接收器独立分类识别。",
-                      "三、 稳定性与问题修复",
-                      "【修复已知问题】修复已知问题。"
-                  ]
+  "latestVersion": "2.1.2",
+  "releaseDate": "2026-10-20",
+  "minSupportedVersion": "1.0.0",
+  "downloadUrl": "https://github.com/Afang555/FerrisPulse/releases/download/v2.1.2/FerrisPulse.exe",
+  "sha256": "8926987b3c765902af4689b4816a4fe4e08e84ac84193322049bffab1a97e7e6",
+  "fileSize": 783360,
+  "changelog": [
+    "玄熊猫 P1 / F5AC 4K 接收器支持 125、250、500、1000、2000、4000 Hz。",
+    "按应用匹配实际 DPI 值或选择已有档位，退出规则恢复实际基线。",
+    "修复 UI 延迟、二次点击才更新及软件 DPI 浮窗缺失。",
+    "关于页使用项目链接，移除赞赏二维码，自动检查更新默认关闭。",
+    "新增缺陷回归记录及跨电脑、跨鼠标适配手册。"
+  ]
 }

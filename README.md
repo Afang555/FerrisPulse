@@ -13,6 +13,10 @@
 - **原项目及致谢**：[Ferris-echo/FerrisPulse](https://github.com/Ferris-echo/FerrisPulse)
 - **问题反馈**：[Issues](https://github.com/Afang555/FerrisPulse/issues)
 
+## 下载
+
+当前发布：**v2.1.2 · 玄熊猫 P1 / 4K 适配版**。下载 [最新 FerrisPulse.exe](https://github.com/Afang555/FerrisPulse/releases/latest/download/FerrisPulse.exe)，或查看 [全部发布版本](https://github.com/Afang555/FerrisPulse/releases)。单文件免安装，直接运行即可。
+
 ## 玄熊猫 P1 适配内容
 
 - 读取电量、连接状态、当前 DPI 档位与实际 X/Y DPI。
@@ -47,14 +51,14 @@
 
 ## 使用与更新
 
-1. 从当前适配分支构建并运行 `FerrisPulse.exe`，先退出官方 Mouse Drive Beta，避免同时通信。
+1. 下载本项目 Releases 中的 `FerrisPulse.exe`，或从当前适配分支构建；先退出官方 Mouse Drive Beta，再运行程序，避免同时通信。
 2. 主界面选择已有 DPI 档位或已支持的回报率；设置成功以硬件回读为准。
 3. 按应用规则入口：托盘右键 → **玄熊猫 · 按应用设置…**，选择实际前台 exe 和当前设备端点。
 4. 换电脑或改变有线/无线连接方式后，重新选择设备端点及应用路径。
 
 **自动检查更新默认关闭。** 在没有保存配置时，不执行开机和后台自动检查；用户可在关于页手动开启，也可使用“检查更新”按钮。已有用户显式保存的开关仍被尊重，本次操作已将当前电脑设置为关闭。
 
-当前手动在线更新模块仍使用原项目发布源，尚未接入本适配分支的独立发布；需要玄熊猫适配代码时，请以本仓库 `MetapandaMouse05` 分支构建为准。
+当前手动在线更新模块仍使用原项目发布源，尚未接入本适配分支的独立发布；需要玄熊猫适配版时，请使用本仓库 Releases 附件或 `MetapandaMouse05` 分支源码构建。
 
 ## 本地构建
 

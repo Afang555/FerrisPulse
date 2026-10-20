@@ -15,7 +15,7 @@ D:\github\mouse\
 ├── AGENT_RULES.md              [AI 行为准则与高分屏规范]
 └── src\
     ├── Properties\             [程序集版本信息与 PE 元数据]
-    │   └── AssemblyInfo.cs     [Windows PE 元数据、版本号 4.0.0.0、版权与产品信息]
+    │   └── AssemblyInfo.cs     [Windows PE 元数据、版本号 2.1.2.0、版权与产品信息]
     │
     ├── Core\                   [系统核心中枢]
     │   ├── Program.cs          [应用入口、全局 Mutex 防多开、目录重置、异常兜底]

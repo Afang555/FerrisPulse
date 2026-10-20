@@ -20,7 +20,7 @@ D:\github\mouse\
     ├── Core\                   [系统核心中枢]
     │   ├── Program.cs          [应用入口、全局 Mutex 防多开、目录重置、异常兜底]
     │   ├── StartupManager.cs   [高鲁棒性自启动引擎：Run/StartupApproved 双键协同与快捷方式]
-    │   ├── ConfigManager.cs    [统一注册表配置持久化管理]
+    │   ├── ConfigManager.cs    [统一注册表配置；自动检查更新默认关闭，可手动开启]
     │   └── NativeMethods.cs    [Win32 P/Invoke API、COM 接口与 TaskbarCreated 消息定义]
     │
     ├── Models\                 [数据模型层（无副作用纯净模型）]
@@ -98,6 +98,8 @@ D:\github\mouse\
 ---
 
 ## 2. 功能路由直达表 (Feature Routing Table)
+
+关于页 `src/UI/Forms/AboutForm.cs` 显示玄熊猫 P1 二次开发来源、当前项目/使用说明/问题反馈及原项目链接。已移除根 `resources/`、`DonateQrAssets.cs` 内嵌赞赏码和二维码生成脚本。原作者署名保留，项目入口改为 Afang555/FerrisPulse；布局按 DPI 缩放。`ConfigManager.GetAutoCheckUpdate()` 在无配置时返回 false；后台启动检查仍读取同一开关，用户可以显式启用，手动检查入口保留。
 
 当 Agent 或工程师需要修改具体功能时，请直接查阅下表直达对应文件：
 

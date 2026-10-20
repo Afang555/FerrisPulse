@@ -6,6 +6,8 @@
 #   3. UpdateManager.ParseVersionJson 零依赖 JSON 解析
 #   4. UpdateManager.ComputeFileSha256 文件哈希校验
 #   5. UpdateManager.GetUpdateEndpoints 容灾节点列表契约
+#   6. 自动检查更新默认关闭、显式开启/关闭持久化并恢复用户配置
+# ⚠️ AI 维护准则 (AI MAINTENANCE DIRECTIVE - DO NOT REMOVE) ⚠️
 # ============================================================================
 
 $ErrorActionPreference = "Stop"
@@ -220,6 +222,38 @@ try {
     $eventInfo.RemoveEventHandler($null, $action)
     Write-Host "PASS: PendingUpdate state machine and event broadcast verified." -ForegroundColor Green
 
+    # 无配置时关闭；显式选择仍可开启。只暂时改动自有应用的这一项值。
+    $configType = $assembly.GetType('RazerBatteryTray.ConfigManager', $true)
+    $getAuto = $configType.GetMethod('GetAutoCheckUpdate')
+    $setAuto = $configType.GetMethod('SetAutoCheckUpdate')
+    $savedPreferences = @()
+    foreach ($path in @('Software\FerrisPulse','Software\RazerBatteryTray')) {
+        $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($path,$true)
+        $exists = $key -and ($key.GetValueNames() -contains 'AutoCheckUpdate')
+        $value = $null; $kind = $null
+        if ($exists) { $value = $key.GetValue('AutoCheckUpdate'); $kind = $key.GetValueKind('AutoCheckUpdate') }
+        $savedPreferences += @{ Path=$path; Exists=$exists; Value=$value; Kind=$kind }
+        if ($key) { $key.Dispose() }
+    }
+    try {
+        foreach ($saved in $savedPreferences) {
+            $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($saved.Path,$true)
+            if ($key) { $key.DeleteValue('AutoCheckUpdate',$false); $key.Dispose() }
+        }
+        if ($getAuto.Invoke($null,@())) { throw 'Automatic update checking must default to off without saved configuration' }
+        $null = $setAuto.Invoke($null,@($true))
+        if (-not $getAuto.Invoke($null,@())) { throw 'Explicit auto-update opt-in was not persisted' }
+        $null = $setAuto.Invoke($null,@($false))
+        if ($getAuto.Invoke($null,@())) { throw 'Explicit auto-update opt-out was not persisted' }
+    } finally {
+        foreach ($saved in $savedPreferences) {
+            $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($saved.Path,$true)
+            if ($saved.Exists) { $key.SetValue('AutoCheckUpdate',$saved.Value,$saved.Kind) }
+            elseif ($key) { $key.DeleteValue('AutoCheckUpdate',$false) }
+            if ($key) { $key.Dispose() }
+        }
+    }
+    Write-Host 'PASS: Automatic updates default off; explicit opt-in/out persists; original preferences restored.' -ForegroundColor Green
     Write-Host "ALL TESTS PASSED for test_update_service.ps1" -ForegroundColor Cyan
 }
 finally {

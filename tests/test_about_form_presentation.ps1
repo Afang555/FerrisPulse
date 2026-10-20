@@ -3,7 +3,8 @@
 # 验证内容:
 #   1. AboutForm 窗体契约 (暗黑背景、无边框、双缓冲)
 #   2. 包含作者署名 Ferris-echo、版本信息、检查更新按钮、自动更新开关
-#   3. 赞赏支持卡片与安全加载逻辑 (无 donate.png 优雅占位无异常)
+#   3. 当前项目/原项目链接、玄熊猫 P1 二次开发说明，不含赞赏二维码
+# ⚠️ AI 维护准则 (AI MAINTENANCE DIRECTIVE - DO NOT REMOVE) ⚠️
 # ============================================================================
 
 $ErrorActionPreference = "Stop"
@@ -106,12 +107,29 @@ try {
     }
     Write-Host "PASS: Update checking controls present." -ForegroundColor Green
 
-    # 验证赞赏支持卡片区域
-    if ($joinedTexts -notmatch "赞赏" -and $joinedTexts -notmatch "支持") {
-        Write-Error "FAIL: AboutForm missing donation/support card!"
+    # 验证二次开发来源与项目入口，不启动外部浏览器
+    if ($joinedTexts -notmatch "二次开发" -or $joinedTexts -notmatch "玄熊猫 P1" -or $joinedTexts -notmatch "Afang555") {
+        Write-Error "FAIL: AboutForm missing P1 fork attribution!"
         exit 1
     }
-    Write-Host "PASS: Donation card found." -ForegroundColor Green
+    if ($joinedTexts -match "赞赏|微信支付|支付宝|580180452") {
+        Write-Error "FAIL: Old donation/community content remains!"
+        exit 1
+    }
+    $projectLinks = @()
+    $queue.Enqueue($form)
+    while ($queue.Count -gt 0) {
+        $ctrl = $queue.Dequeue()
+        if ($ctrl -is [System.Windows.Forms.LinkLabel]) {
+            foreach ($link in $ctrl.Links) { $projectLinks += [string]$link.LinkData }
+        }
+        foreach ($child in $ctrl.Controls) { $queue.Enqueue($child) }
+    }
+    foreach ($url in @('https://github.com/Afang555/FerrisPulse', 'https://github.com/Ferris-echo/FerrisPulse')) {
+        if ($projectLinks -notcontains $url) { throw ('Missing repository link target: ' + $url) }
+    }
+    if ($null -ne $assembly.GetType('RazerBatteryTray.DonateQrAssets')) { throw 'Embedded donation QR assets remain' }
+    Write-Host "PASS: P1 fork attribution and repository links replace donation assets." -ForegroundColor Green
 
     $form.Dispose()
     Write-Host "ALL TESTS PASSED for test_about_form_presentation.ps1" -ForegroundColor Cyan

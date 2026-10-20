@@ -1,5 +1,6 @@
 ﻿# Unit and regression test for Universal High-DPI Adaptive Form System
 # Tests DpiScaleHelper, DpiAwareForm, AboutForm, and secondary dialogs
+# ⚠️ AI 维护准则 (AI MAINTENANCE DIRECTIVE - DO NOT REMOVE) ⚠️
 
 Write-Host "Verifying Universal High-DPI Adaptive Form System..." -ForegroundColor Cyan
 
@@ -7,7 +8,8 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 # Test 1: Verify DpiScaleHelper existence and mathematical accuracy
-$rawBytes = [System.IO.File]::ReadAllBytes((Join-Path (Get-Location) "FerrisPulse.exe"))
+$binary = if ($env:FERRISPULSE_TEST_ASSEMBLY) { $env:FERRISPULSE_TEST_ASSEMBLY } else { Join-Path (Split-Path $PSScriptRoot -Parent) 'FerrisPulse.exe' }
+$rawBytes = [System.IO.File]::ReadAllBytes($binary)
 $asm = [System.Reflection.Assembly]::Load($rawBytes)
 $helperType = $asm.GetType("RazerBatteryTray.DpiScaleHelper")
 
@@ -84,8 +86,8 @@ $h = $aboutForm.Handle
 # Find controls via reflection
 $fLogo = $aboutType.GetField("lblLogo", [System.Reflection.BindingFlags]"NonPublic,Instance")
 $fPrefix = $aboutType.GetField("lblAuthorPrefix", [System.Reflection.BindingFlags]"NonPublic,Instance")
-$fCardDonate = $aboutType.GetField("cardDonate", [System.Reflection.BindingFlags]"NonPublic,Instance")
-$fDonateDesc = $aboutType.GetField("lblDonateDesc", [System.Reflection.BindingFlags]"NonPublic,Instance")
+$fCardProject = $aboutType.GetField("cardProject", [System.Reflection.BindingFlags]"NonPublic,Instance")
+$fProjectDesc = $aboutType.GetField("lblProjectDesc", [System.Reflection.BindingFlags]"NonPublic,Instance")
 
 if ($fLogo -ne $null -and $fPrefix -ne $null) {
     $lblLogo = $fLogo.GetValue($aboutForm)
@@ -98,26 +100,24 @@ if ($fLogo -ne $null -and $fPrefix -ne $null) {
     Write-Host "PASS: AboutForm authorship row is strictly below logo (no overlap at 200% DPI)." -ForegroundColor Green
 }
 
-if ($fCardDonate -ne $null -and $fDonateDesc -ne $null) {
-    $cardDonate = $fCardDonate.GetValue($aboutForm)
-    $lblDonateDesc = $fDonateDesc.GetValue($aboutForm)
-    if ($lblDonateDesc.Right -gt $cardDonate.Width) {
-        Write-Host "FAIL: AboutForm donate description truncated! Right ($($lblDonateDesc.Right)) > cardDonate.Width ($($cardDonate.Width))!" -ForegroundColor Red
-        $aboutForm.Dispose()
-        exit 1
+if ($null -eq $fCardProject -or $null -eq $fProjectDesc) { throw 'Missing project card/description' }
+# Exercise the actual 100%/150%/200% layout even when the current monitor clamps window scale.
+$scaleField = $baseFormType.GetField('dpiScale', [System.Reflection.BindingFlags]'NonPublic,Instance')
+$layoutMethod = $aboutType.GetMethod('ApplyAboutLayout', [System.Reflection.BindingFlags]'NonPublic,Instance')
+foreach ($scale in @([float]1.0,[float]1.5,[float]2.0)) {
+    $scaleField.SetValue($aboutForm,$scale)
+    $null = $layoutMethod.Invoke($aboutForm,@())
+    $cardProject = $fCardProject.GetValue($aboutForm)
+    $description = $fProjectDesc.GetValue($aboutForm)
+    if ($description.Right -gt $cardProject.ClientSize.Width) { throw 'Project description is clipped' }
+    $previousBottom = $description.Bottom
+    foreach ($field in @('lnkGithub','lnkGuide','lnkIssues','lnkUpstream')) {
+        $control = $aboutType.GetField($field,[System.Reflection.BindingFlags]'NonPublic,Instance').GetValue($aboutForm)
+        if ($control.Top -lt $previousBottom -or $control.Right -gt $cardProject.ClientSize.Width -or $control.Bottom -gt $cardProject.ClientSize.Height) { throw ('Clipped/overlapping project link at scale ' + $scale + ': ' + $field) }
+        $previousBottom = $control.Bottom
     }
-    Write-Host "PASS: AboutForm donate description fits comfortably inside cardDonate." -ForegroundColor Green
-
-    $fQrWeChat = $aboutType.GetField("qrPanelWeChat", [System.Reflection.BindingFlags]"NonPublic,Instance")
-    if ($fQrWeChat -ne $null) {
-        $qrWeChat = $fQrWeChat.GetValue($aboutForm)
-        if ($qrWeChat.Top -lt $lblDonateDesc.Bottom) {
-            Write-Host "FAIL: AboutForm QR panel overlap detected! qrPanelWeChat.Top ($($qrWeChat.Top)) < lblDonateDesc.Bottom ($($lblDonateDesc.Bottom))!" -ForegroundColor Red
-            $aboutForm.Dispose()
-            exit 1
-        }
-        Write-Host "PASS: AboutForm QR panels are strictly below donate description with no truncation." -ForegroundColor Green
-    }
+    if ($aboutForm.ClientSize.Width -ne [int](600*$scale)) { throw 'AboutForm is not applying the requested DPI scale' }
+    Write-Host ('PASS: Project card and links fit at ' + ($scale*100) + '% DPI.') -ForegroundColor Green
 }
 
 $aboutForm.Dispose()

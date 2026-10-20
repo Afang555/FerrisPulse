@@ -125,7 +125,7 @@ namespace RazerBatteryTray
             toolTipTop = new ToolTip();
             toolTipTop.SetToolTip(btnTopPriority, "设备优先级管理 (拖拽排序)");
             toolTipTop.SetToolTip(btnTopAddDevice, "手动添加新外设向导 (耳机/手柄/键鼠)");
-            toolTipTop.SetToolTip(btnTopAbout, "关于 FerrisPulse & 赞赏支持");
+            toolTipTop.SetToolTip(btnTopAbout, "关于 FerrisPulse 与项目地址");
 
             // ================= CARD 1: BATTERY & DEVICE STATUS =================
             int card1Y = (int)(12 * dpiScale) + barH + (int)(10 * dpiScale);

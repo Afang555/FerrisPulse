@@ -2,8 +2,8 @@
 // 模块名称: AboutForm.cs
 // 所属区域: UI/Forms (二级窗体层)
 // 核心职责:
-//   专属黑金电竞美学关于与致谢卡片：呈现作者 Ferris-echo 署名、版本状态、
-//   在线检查更新、自动更新配置以及微信/支付宝赞赏支持双艺术二维码（纯净无图标极客矩阵）。
+//   专属黑金电竞美学关于与致谢卡片：呈现原作者 Ferris-echo 与二次开发来源、版本状态、
+//   在线检查更新、默认关闭的自动更新配置及玄熊猫 P1 适配项目链接。
 //   支持原生 Win32 平滑拖动、ESC 快速退出、暗黑质感防眩光布局与严格像素级对齐居中。
 //   极致视听与动效系统：
 //   1. 八音阶纯内存即时并发水晶钢片琴（2.5s 空闲重置），急速连击零停顿、零掐音
@@ -12,7 +12,7 @@
 //   4. 真实物理级内聚霓虹柔光（5 层 Inward Bloom Aura）与 60fps 动态全彩流光
 //   5. 鼠标星尘拖尾流光（Stardust Trail）与水波涟漪动效（Water Ripples）
 //   6. 《写在代码之外》克制本真排版，彻底消除廉价感与文字截断
-// 依赖关系: ModernThemeHelper, ModernButton, ModernCheckBox, StatusPill, RoundedCard, UpdateManager, ConfigManager, NativeMethods, ChimeSynthesizer, DonateQrAssets
+// 依赖关系: ModernThemeHelper, ModernButton, ModernCheckBox, StatusPill, RoundedCard, UpdateManager, ConfigManager, NativeMethods, ChimeSynthesizer
 //
 // ⚠️ AI 维护准则 (AI MAINTENANCE DIRECTIVE - DO NOT REMOVE) ⚠️:
 // 1. [C# 5 兼容铁律]: 严禁使用 C# 6+ 语法。
@@ -24,7 +24,6 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
-using System.IO;
 using System.Reflection;
 using System.Windows.Forms;
 
@@ -44,9 +43,9 @@ namespace RazerBatteryTray
         // 正面控件
         private Panel titleBar;
         private RoundedCard cardUpdate;
-        private RoundedCard cardDonate;
+        private RoundedCard cardProject;
         private Label lblCardUpdateTitle;
-        private Label lblDonateTitle;
+        private Label lblProjectTitle;
         private ModernCheckBox chkAutoUpdate;
         private ModernButton btnCheckUpdate;
         private Label lblUpdateStatus;
@@ -54,13 +53,10 @@ namespace RazerBatteryTray
         private Label lblAuthorPrefix;
         private Label lblAuthorName;
         private Label lblAuthorSuffix;
-        private Label lblDonateDesc;
+        private Label lblProjectDesc;
 
-        // 双二维码赞赏面板
-        private Panel qrPanelWeChat;
-        private Panel qrPanelAlipay;
-        private LinkLabel lnkQQ;
-        private LinkLabel lnkGithub;
+        // 当前适配项目与原项目链接
+        private LinkLabel lnkGithub, lnkGuide, lnkIssues, lnkUpstream;
 
         // 背面控件
         private RoundedCard cardQuote;
@@ -241,7 +237,7 @@ namespace RazerBatteryTray
             pnlFront.Paint += PnlFront_Paint;
 
             lblLogo = new Label();
-            lblLogo.Text = "FerrisPulse · 灵脉";
+            lblLogo.Text = "FerrisPulse · 玄熊猫 P1 适配版";
             lblLogo.Font = new Font("Microsoft YaHei UI", 14F, FontStyle.Bold);
             lblLogo.ForeColor = Color.FromArgb(245, 248, 255);
             lblLogo.BackColor = Color.Transparent;
@@ -251,7 +247,7 @@ namespace RazerBatteryTray
 
             // 作者署名热区行
             lblAuthorPrefix = new Label();
-            lblAuthorPrefix.Text = "由 ";
+            lblAuthorPrefix.Text = "原项目：";
             lblAuthorPrefix.Font = new Font("Microsoft YaHei UI", 9.2F, FontStyle.Regular);
             lblAuthorPrefix.ForeColor = Color.FromArgb(175, 182, 198);
             lblAuthorPrefix.BackColor = Color.Transparent;
@@ -273,7 +269,7 @@ namespace RazerBatteryTray
             pnlFront.Controls.Add(lblAuthorName);
 
             lblAuthorSuffix = new Label();
-            lblAuthorSuffix.Text = " 独立设计与开发";
+            lblAuthorSuffix.Text = " · Afang555 二次开发";
             lblAuthorSuffix.Font = new Font("Microsoft YaHei UI", 9.2F, FontStyle.Regular);
             lblAuthorSuffix.ForeColor = Color.FromArgb(175, 182, 198);
             lblAuthorSuffix.BackColor = Color.Transparent;
@@ -329,104 +325,38 @@ namespace RazerBatteryTray
 
             pnlFront.Controls.Add(cardUpdate);
 
-            // Card 2: 赞赏支持卡片
-            cardDonate = new RoundedCard();
-            cardDonate.CardColor = Color.FromArgb(25, 27, 34);
-            cardDonate.BorderColor = Color.FromArgb(42, 46, 58);
-            cardDonate.MouseDown += OnDragMouseDown;
+            // Card 2: 当前项目地址与二次开发来源
+            cardProject = new RoundedCard();
+            cardProject.CardColor = Color.FromArgb(25, 27, 34);
+            cardProject.BorderColor = Color.FromArgb(42, 46, 58);
+            cardProject.MouseDown += OnDragMouseDown;
 
-            lblDonateTitle = new Label();
-            lblDonateTitle.Text = "支持作者 / 赞赏开发";
-            lblDonateTitle.Font = new Font("Microsoft YaHei UI", 9.8F, FontStyle.Bold);
-            lblDonateTitle.ForeColor = Color.FromArgb(235, 240, 255);
-            lblDonateTitle.BackColor = cardDonate.CardColor;
-            lblDonateTitle.AutoSize = true;
-            lblDonateTitle.MouseDown += OnDragMouseDown;
-            cardDonate.Controls.Add(lblDonateTitle);
+            lblProjectTitle = new Label();
+            lblProjectTitle.Text = "项目地址与适配说明";
+            lblProjectTitle.Font = new Font("Microsoft YaHei UI", 9.8F, FontStyle.Bold);
+            lblProjectTitle.ForeColor = Color.FromArgb(235, 240, 255);
+            lblProjectTitle.BackColor = Color.Transparent;
+            lblProjectTitle.AutoSize = true;
+            cardProject.Controls.Add(lblProjectTitle);
 
-            lblDonateDesc = new Label();
-            lblDonateDesc.Text = "如果这款软件为您的游戏体验带来了便利，欢迎赞赏支持作者！";
-            lblDonateDesc.Font = new Font("Microsoft YaHei UI", 8.8F);
-            lblDonateDesc.ForeColor = Color.FromArgb(160, 168, 185);
-            lblDonateDesc.BackColor = Color.Transparent;
-            lblDonateDesc.AutoSize = true;
-            lblDonateDesc.MouseDown += OnDragMouseDown;
-            cardDonate.Controls.Add(lblDonateDesc);
+            lblProjectDesc = new Label();
+            lblProjectDesc.Text = "基于 Ferris-echo/FerrisPulse 二次开发，适配玄熊猫 P1 驱动。\n源码、使用说明与问题反馈请访问以下项目地址。";
+            lblProjectDesc.Font = new Font("Microsoft YaHei UI", 8.8F);
+            lblProjectDesc.ForeColor = Color.FromArgb(160, 168, 185);
+            lblProjectDesc.BackColor = Color.Transparent;
+            lblProjectDesc.AutoSize = true;
+            cardProject.Controls.Add(lblProjectDesc);
 
-            // 双艺术二维码左右平铺面板
-            qrPanelWeChat = new Panel();
-            qrPanelWeChat.BackColor = Color.Transparent;
-            qrPanelWeChat.Paint += delegate(object sender, PaintEventArgs e)
-            {
-                DrawArtisticQrCard(e.Graphics, qrPanelWeChat.Width, qrPanelWeChat.Height, true, DonateQrAssets.GetWeChatQr());
-            };
-            qrPanelWeChat.MouseDown += OnDragMouseDown;
-            cardDonate.Controls.Add(qrPanelWeChat);
-            qrPanelWeChat.BringToFront();
+            lnkGithub = CreateProjectLink("项目主页：Afang555/FerrisPulse", "https://github.com/Afang555/FerrisPulse");
+            lnkGuide = CreateProjectLink("使用说明：档位、DPI 与回报率", "https://github.com/Afang555/FerrisPulse/blob/MetapandaMouse05/docs/metapanda-guide.md");
+            lnkIssues = CreateProjectLink("问题反馈与设备适配", "https://github.com/Afang555/FerrisPulse/issues");
+            lnkUpstream = CreateProjectLink("原项目：Ferris-echo/FerrisPulse", "https://github.com/Ferris-echo/FerrisPulse");
+            cardProject.Controls.Add(lnkGithub);
+            cardProject.Controls.Add(lnkGuide);
+            cardProject.Controls.Add(lnkIssues);
+            cardProject.Controls.Add(lnkUpstream);
 
-            qrPanelAlipay = new Panel();
-            qrPanelAlipay.BackColor = Color.Transparent;
-            qrPanelAlipay.Paint += delegate(object sender, PaintEventArgs e)
-            {
-                DrawArtisticQrCard(e.Graphics, qrPanelAlipay.Width, qrPanelAlipay.Height, false, DonateQrAssets.GetAlipayQr());
-            };
-            qrPanelAlipay.MouseDown += OnDragMouseDown;
-            cardDonate.Controls.Add(qrPanelAlipay);
-            qrPanelAlipay.BringToFront();
-
-            // 底部社区交流群与开源仓库链接
-            lnkQQ = new LinkLabel();
-            lnkQQ.Text = "QQ 交流群: 580180452";
-            lnkQQ.Font = new Font("Microsoft YaHei UI", 8.8F);
-            lnkQQ.LinkColor = Color.FromArgb(77, 182, 252);
-            lnkQQ.ActiveLinkColor = Color.FromArgb(129, 212, 250);
-            lnkQQ.VisitedLinkColor = Color.FromArgb(77, 182, 252);
-            lnkQQ.BackColor = Color.Transparent;
-            lnkQQ.AutoSize = true;
-            lnkQQ.LinkClicked += delegate(object s, LinkLabelLinkClickedEventArgs e)
-            {
-                try
-                {
-                    Clipboard.SetText("580180452");
-                    lnkQQ.Text = "QQ 交流群: 580180452 (已复制)";
-                    CenterControlHorizontally(lnkQQ, cardDonate.Width);
-
-                    Timer copyTimer = new Timer();
-                    copyTimer.Interval = 2000;
-                    copyTimer.Tick += delegate(object s2, EventArgs e2)
-                    {
-                        copyTimer.Stop();
-                        copyTimer.Dispose();
-                        if (!lnkQQ.IsDisposed)
-                        {
-                            lnkQQ.Text = "QQ 交流群: 580180452";
-                            CenterControlHorizontally(lnkQQ, cardDonate.Width);
-                        }
-                    };
-                    copyTimer.Start();
-
-                    string qqShareUrl = "https://qun.qq.com/universal-share/share?ac=1&authKey=jSTwQOun56pd3gi6ts34tN%2F6TDFrBouMRWJE%2BSsHaKS7%2FrrSlKHLu%2FXYJXfDZpl%2B&busi_data=eyJncm91cENvZGUiOiI1ODAxODA0NTIiLCJ0b2tlbiI6Ind2Y1ZocnhsekFnVi8xN3AzOXl1dTY5VlA2NWtCSFd6NFphcXR2dHhCTW10R3NwYWpyZmhGNXdNS3ZhS2owZzAiLCJ1aW4iOiIyOTQ5MjI1ODQwIn0%3D&data=8-Avoq-5DTwgCiC_xlKHxhhhnZp7d66IdyHPeha1XGGNxS3pp9s1uPoyaE-RtU_ZhIb74Px33-A1ZRe3oIw8vQ&svctype=4&tempid=h5_group_info";
-                    try { Process.Start(qqShareUrl); } catch { }
-                }
-                catch { }
-            };
-            cardDonate.Controls.Add(lnkQQ);
-
-            lnkGithub = new LinkLabel();
-            lnkGithub.Text = "GitHub: Ferris-echo/FerrisPulse";
-            lnkGithub.Font = new Font("Microsoft YaHei UI", 8.8F);
-            lnkGithub.LinkColor = Color.FromArgb(0, 215, 115);
-            lnkGithub.ActiveLinkColor = Color.FromArgb(0, 255, 130);
-            lnkGithub.VisitedLinkColor = Color.FromArgb(0, 215, 115);
-            lnkGithub.BackColor = Color.Transparent;
-            lnkGithub.AutoSize = true;
-            lnkGithub.LinkClicked += delegate(object s, LinkLabelLinkClickedEventArgs e)
-            {
-                try { Process.Start("https://github.com/Ferris-echo/FerrisPulse"); } catch { }
-            };
-            cardDonate.Controls.Add(lnkGithub);
-
-            pnlFront.Controls.Add(cardDonate);
+            pnlFront.Controls.Add(cardProject);
             flipContainer.Controls.Add(pnlFront);
 
             // ==========================================
@@ -487,191 +417,94 @@ namespace RazerBatteryTray
             ApplyAboutLayout();
         }
 
-        private void ApplyAboutLayout()
+        private static LinkLabel CreateProjectLink(string title, string url)
         {
-            const int clientW = 600;
-            const int padX = 24;
-            const int cardWidth = clientW - (padX * 2); // 552
-
-            // 1. 顶部标题栏由 Windows 11 原生沉浸式暗黑标题栏接管
-            if (titleBar != null)
+            var link = new LinkLabel();
+            link.Text = title;
+            link.Font = new Font("Microsoft YaHei UI", 8.8F);
+            link.LinkColor = Color.FromArgb(0, 215, 115);
+            link.ActiveLinkColor = Color.FromArgb(0, 255, 130);
+            link.VisitedLinkColor = link.LinkColor;
+            link.BackColor = Color.Transparent;
+            link.AutoSize = true;
+            link.Links.Clear();
+            link.Links.Add(0, title.Length, url);
+            link.LinkClicked += delegate(object sender, LinkLabelLinkClickedEventArgs e)
             {
-                titleBar.Visible = false;
-            }
-
-            // 2. 正面品牌与署名
-            const int topY = 14;
-            if (lblLogo != null)
-            {
-                lblLogo.Font = new Font("Microsoft YaHei UI", 14F, FontStyle.Bold);
-                lblLogo.Location = new Point(padX, topY);
-            }
-
-            const int authorY = topY + 36; // 50
-            if (lblAuthorPrefix != null)
-            {
-                lblAuthorPrefix.Font = new Font("Microsoft YaHei UI", 9.2F, FontStyle.Regular);
-                lblAuthorPrefix.Location = new Point(padX, authorY);
-                Size prefixSize = TextRenderer.MeasureText(lblAuthorPrefix.Text, lblAuthorPrefix.Font);
-                if (lblAuthorName != null)
-                {
-                    lblAuthorName.Font = new Font("Microsoft YaHei UI", 9.2F, FontStyle.Bold);
-                    lblAuthorName.Location = new Point(padX + prefixSize.Width - 6, authorY);
-                    Size nameSize = TextRenderer.MeasureText(AuthorName, lblAuthorName.Font);
-                    if (lblAuthorSuffix != null)
-                    {
-                        lblAuthorSuffix.Font = new Font("Microsoft YaHei UI", 9.2F, FontStyle.Regular);
-                        lblAuthorSuffix.Location = new Point(lblAuthorName.Left + nameSize.Width - 4, authorY);
-                        lblAuthorName.SizeChanged += delegate
-                        {
-                            if (lblAuthorSuffix != null && !lblAuthorSuffix.IsDisposed)
-                            {
-                                lblAuthorSuffix.Location = new Point(lblAuthorName.Right - 4, authorY);
-                            }
-                        };
-                    }
-                }
-            }
-
-            // Card 1: 软件在线更新卡片 (原始设计高度 114)
-            const int card1Y = topY + 70; // 84
-            const int card1H = 114;
-            if (cardUpdate != null)
-            {
-                cardUpdate.Location = new Point(padX, card1Y);
-                cardUpdate.Size = new Size(cardWidth, card1H);
-                cardUpdate.CornerRadius = 8;
-
-                if (lblCardUpdateTitle != null)
-                {
-                    lblCardUpdateTitle.Font = new Font("Microsoft YaHei UI", 9.5F, FontStyle.Bold);
-                    lblCardUpdateTitle.Location = new Point(20, 15);
-                }
-                if (btnCheckUpdate != null)
-                {
-                    btnCheckUpdate.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
-                    btnCheckUpdate.Size = new Size(110, 32);
-                    btnCheckUpdate.Location = new Point(cardWidth - 20 - 110, 44);
-                    btnCheckUpdate.CornerRadius = 6;
-                }
-                if (chkAutoUpdate != null)
-                {
-                    chkAutoUpdate.Font = new Font("Microsoft YaHei UI", 8.8F);
-                    int chkMaxW = (btnCheckUpdate != null ? btnCheckUpdate.Left : cardWidth) - 40;
-                    chkAutoUpdate.Location = new Point(20, 47);
-                    chkAutoUpdate.Size = new Size(chkMaxW, 26);
-                }
-                if (lblUpdateStatus != null)
-                {
-                    lblUpdateStatus.Font = new Font("Microsoft YaHei UI", 8.5F);
-                    lblUpdateStatus.Location = new Point(20, 81);
-                }
-            }
-
-            // Card 2: 赞赏支持卡片 (原始设计高度 432)
-            const int card2Y = card1Y + card1H + 14; // 212
-            const int card2H = 432;
-            if (cardDonate != null)
-            {
-                cardDonate.Location = new Point(padX, card2Y);
-                cardDonate.Size = new Size(cardWidth, card2H);
-                cardDonate.CornerRadius = 8;
-            }
-
-            const int qrCardW = 176;
-            const int qrCardH = 216;
-            const int qrGap = 36;
-            const int qrTotalW = qrCardW * 2 + qrGap; // 388
-            const int qrStartX = (cardWidth - qrTotalW) / 2; // 82
-
-            if (lblDonateTitle != null)
-            {
-                lblDonateTitle.Font = new Font("Microsoft YaHei UI", 9.8F, FontStyle.Bold);
-                lblDonateTitle.Location = new Point(20, 16);
-            }
-            if (lblDonateDesc != null)
-            {
-                lblDonateDesc.Font = new Font("Microsoft YaHei UI", 8.8F);
-                lblDonateDesc.Location = new Point(20, 42);
-                lblDonateDesc.MaximumSize = new Size(cardWidth - 40, 0);
-                lblDonateDesc.AutoSize = true;
-                lblDonateDesc.BackColor = Color.Transparent;
-            }
-
-            // 动态流式布局：严格基于 lblDonateDesc 实际文本渲染底边界计算二维码卡片起始 Y 轴，彻底根绝重叠与截断
-            int descBottom = (lblDonateDesc != null && lblDonateDesc.Height > 0) ? lblDonateDesc.Bottom : 64;
-            int qrY = Math.Max(descBottom + 14, 76);
-
-            if (qrPanelWeChat != null)
-            {
-                qrPanelWeChat.Location = new Point(qrStartX, qrY);
-                qrPanelWeChat.Size = new Size(qrCardW, qrCardH);
-                qrPanelWeChat.BringToFront();
-            }
-            if (qrPanelAlipay != null)
-            {
-                qrPanelAlipay.Location = new Point(qrStartX + qrCardW + qrGap, qrY);
-                qrPanelAlipay.Size = new Size(qrCardW, qrCardH);
-                qrPanelAlipay.BringToFront();
-            }
-
-            int qrBottom = qrY + qrCardH;
-            if (lnkQQ != null)
-            {
-                lnkQQ.Font = new Font("Microsoft YaHei UI", 8.8F);
-                lnkQQ.Top = qrBottom + 16;
-                CenterControlHorizontally(lnkQQ, cardWidth);
-                lnkQQ.BringToFront();
-            }
-            if (lnkGithub != null)
-            {
-                lnkGithub.Font = new Font("Microsoft YaHei UI", 8.8F);
-                lnkGithub.Top = (lnkQQ != null ? lnkQQ.Bottom : qrBottom + 16) + 8;
-                CenterControlHorizontally(lnkGithub, cardWidth);
-                lnkGithub.BringToFront();
-            }
-
-            // 3. 计算窗体与主容器总高度 (固定 600x668 客户端尺寸)
-            const int containerH = 668;
-
-            this.ClientSize = new Size(clientW, containerH);
-            this.StartPosition = FormStartPosition.CenterScreen;
-
-            if (flipContainer != null)
-            {
-                flipContainer.Location = new Point(0, 0);
-                flipContainer.Size = new Size(clientW, containerH);
-            }
-            if (shatterCanvas != null)
-            {
-                shatterCanvas.Size = new Size(clientW, containerH);
-            }
-            if (pnlFront != null)
-            {
-                pnlFront.Size = new Size(clientW, containerH);
-            }
-            if (pnlBack != null)
-            {
-                pnlBack.Size = new Size(clientW, containerH);
-            }
-            if (cardQuote != null)
-            {
-                const int backCardY = 16;
-                const int backCardH = containerH - (backCardY * 2) - 8; // 628
-                cardQuote.Location = new Point(padX, backCardY);
-                cardQuote.Size = new Size(cardWidth, backCardH);
-                cardQuote.CornerRadius = 12;
-
-                if (btnFlipBack != null)
-                {
-                    btnFlipBack.Font = new Font("Microsoft YaHei UI", 9.5F, FontStyle.Bold);
-                    btnFlipBack.Size = new Size(160, 38);
-                    btnFlipBack.CornerRadius = 6;
-                    btnFlipBack.Location = new Point((cardWidth - btnFlipBack.Width) / 2, backCardH - 62);
-                }
-            }
+                try { Process.Start((string)e.Link.LinkData); } catch { }
+            };
+            return link;
         }
 
+        private void ApplyAboutLayout()
+        {
+            int clientW = Scale(600);
+            int padX = Scale(24);
+            int cardWidth = clientW - padX * 2;
+            float scale = DpiScale;
+            if (titleBar != null) titleBar.Visible = false;
+
+            lblLogo.Font = new Font("Microsoft YaHei UI", 14F * scale, FontStyle.Bold);
+            lblLogo.Location = new Point(padX, Scale(14));
+            int authorY = Math.Max(Scale(50), lblLogo.Bottom + Scale(8));
+            lblAuthorPrefix.Font = new Font("Microsoft YaHei UI", 9.2F * scale);
+            lblAuthorPrefix.Location = new Point(padX, authorY);
+            lblAuthorName.Font = new Font("Microsoft YaHei UI", 9.2F * scale, FontStyle.Bold);
+            lblAuthorName.Location = new Point(lblAuthorPrefix.Right - Scale(4), authorY);
+            lblAuthorSuffix.Font = new Font("Microsoft YaHei UI", 9.2F * scale);
+            lblAuthorSuffix.Location = new Point(lblAuthorName.Right - Scale(4), authorY);
+
+            int card1Y = Math.Max(Scale(84), lblAuthorPrefix.Bottom + Scale(12));
+            int card1H = Scale(114);
+            cardUpdate.Location = new Point(padX, card1Y);
+            cardUpdate.Size = new Size(cardWidth, card1H);
+            cardUpdate.CornerRadius = Scale(8);
+            lblCardUpdateTitle.Font = new Font("Microsoft YaHei UI", 9.5F * scale, FontStyle.Bold);
+            lblCardUpdateTitle.Location = new Point(Scale(20), Scale(15));
+            btnCheckUpdate.Font = new Font("Microsoft YaHei UI", 9F * scale, FontStyle.Bold);
+            btnCheckUpdate.Size = new Size(Scale(110), Scale(32));
+            btnCheckUpdate.Location = new Point(cardWidth - Scale(130), Scale(44));
+            btnCheckUpdate.CornerRadius = Scale(6);
+            chkAutoUpdate.Font = new Font("Microsoft YaHei UI", 8.8F * scale);
+            chkAutoUpdate.Location = new Point(Scale(20), Scale(47));
+            chkAutoUpdate.Size = new Size(btnCheckUpdate.Left - Scale(40), Scale(26));
+            lblUpdateStatus.Font = new Font("Microsoft YaHei UI", 8.5F * scale);
+            lblUpdateStatus.Location = new Point(Scale(20), Scale(81));
+
+            cardProject.Location = new Point(padX, cardUpdate.Bottom + Scale(14));
+            cardProject.Width = cardWidth;
+            cardProject.CornerRadius = Scale(8);
+            lblProjectTitle.Font = new Font("Microsoft YaHei UI", 9.8F * scale, FontStyle.Bold);
+            lblProjectTitle.Location = new Point(Scale(20), Scale(16));
+            lblProjectDesc.Font = new Font("Microsoft YaHei UI", 8.8F * scale);
+            lblProjectDesc.Location = new Point(Scale(20), Scale(46));
+            lblProjectDesc.MaximumSize = new Size(cardWidth - Scale(40), 0);
+            int nextY = lblProjectDesc.Bottom + Scale(20);
+            foreach (var link in new LinkLabel[] { lnkGithub, lnkGuide, lnkIssues, lnkUpstream })
+            {
+                if (link == lnkUpstream) nextY += Scale(12);
+                link.Font = new Font("Microsoft YaHei UI", 8.8F * scale);
+                link.Location = new Point(Scale(20), nextY);
+                nextY = link.Bottom + Scale(14);
+            }
+            cardProject.Height = Math.Max(Scale(312), nextY + Scale(12));
+
+            // Preserve room for the original author's back-page text and return button.
+            int containerH = Math.Max(Scale(548), cardProject.Bottom + Scale(24));
+            this.ClientSize = new Size(clientW, containerH);
+            flipContainer.Location = Point.Empty;
+            flipContainer.Size = this.ClientSize;
+            shatterCanvas.Size = this.ClientSize;
+            pnlFront.Size = this.ClientSize;
+            pnlBack.Size = this.ClientSize;
+            cardQuote.Location = new Point(padX, Scale(16));
+            cardQuote.Size = new Size(cardWidth, containerH - Scale(40));
+            cardQuote.CornerRadius = Scale(12);
+            btnFlipBack.Font = new Font("Microsoft YaHei UI", 9.5F * scale, FontStyle.Bold);
+            btnFlipBack.Size = new Size(Scale(160), Scale(38));
+            btnFlipBack.CornerRadius = Scale(6);
+            btnFlipBack.Location = new Point((cardWidth - btnFlipBack.Width) / 2, cardQuote.Height - Scale(62));
+        }
         protected override void OnApplyDpiScale(float scale)
         {
             base.OnApplyDpiScale(scale);
@@ -688,84 +521,6 @@ namespace RazerBatteryTray
                     .SetValue(c, true, null);
             }
             catch { }
-        }
-
-        private static void CenterControlHorizontally(Control ctrl, int containerWidth)
-        {
-            if (ctrl == null) return;
-            Size sz = TextRenderer.MeasureText(ctrl.Text, ctrl.Font);
-            ctrl.Left = (containerWidth - sz.Width) / 2;
-        }
-
-        private void DrawArtisticQrCard(Graphics g, int w, int h, bool isWeChat, Image qrImage)
-        {
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-
-            Rectangle rect = new Rectangle(0, 0, w - 1, h - 1);
-            int cornerRadius = 8;
-            Color channelAccent = isWeChat ? Color.FromArgb(0, 200, 83) : Color.FromArgb(22, 119, 255);
-            Color textAccent = isWeChat ? Color.FromArgb(0, 230, 118) : Color.FromArgb(0, 176, 255);
-
-            // 1. 暗黑微晶浮岛卡底
-            using (GraphicsPath outerPath = RoundedCard.GetRoundedRectangle(rect, cornerRadius))
-            {
-                using (SolidBrush bgBrush = new SolidBrush(Color.FromArgb(20, 23, 30)))
-                {
-                    g.FillPath(bgBrush, outerPath);
-                }
-
-                using (Pen borderPen = new Pen(Color.FromArgb(90, channelAccent.R, channelAccent.G, channelAccent.B), 1.2f))
-                {
-                    g.DrawPath(borderPen, outerPath);
-                }
-            }
-
-            // 2. 内部扫码视窗 (152x152, 6px 微圆角, 浅色高对比度基底确保 100% 极速识别)
-            int innerW = 152;
-            int innerH = 152;
-            int innerX = (w - innerW) / 2;
-            int innerY = 10;
-            Rectangle innerRect = new Rectangle(innerX, innerY, innerW, innerH);
-
-            Color qrBgColor = isWeChat ? Color.FromArgb(243, 250, 246) : Color.FromArgb(243, 246, 252);
-
-            using (GraphicsPath innerPath = RoundedCard.GetRoundedRectangle(innerRect, 6))
-            {
-                using (SolidBrush plateBrush = new SolidBrush(qrBgColor))
-                {
-                    g.FillPath(plateBrush, innerPath);
-                }
-
-                GraphicsState state = g.Save();
-                g.SetClip(innerPath);
-                if (qrImage != null)
-                {
-                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                    Rectangle qrDrawRect = new Rectangle(innerRect.Left + 4, innerRect.Top + 4, innerRect.Width - 8, innerRect.Height - 8);
-                    g.DrawImage(qrImage, qrDrawRect);
-                }
-                g.Restore(state);
-
-                // 统一精致圆角护边，彻底根除直角角标造成的几何冲突与不对齐
-                using (Pen plateBorderPen = new Pen(Color.FromArgb(65, channelAccent.R, channelAccent.G, channelAccent.B), 1.0f))
-                {
-                    g.DrawPath(plateBorderPen, innerPath);
-                }
-            }
-
-            // 3. 下方通道引导提示文案 (垂直居中与水平中轴线双向居中，舒展克制)
-            string titleText = isWeChat ? "微信赞赏码" : "支付宝赞赏码";
-
-            using (Font titleFont = new Font("Microsoft YaHei UI", 9.0F, FontStyle.Bold))
-            using (SolidBrush titleBrush = new SolidBrush(textAccent))
-            {
-                StringFormat sf = new StringFormat();
-                sf.Alignment = StringAlignment.Center;
-                sf.LineAlignment = StringAlignment.Center;
-                Rectangle titleRect = new Rectangle(0, innerY + innerH, w, h - (innerY + innerH));
-                g.DrawString(titleText, titleFont, titleBrush, titleRect, sf);
-            }
         }
 
         #region 背面 60fps 持续动画：星尘拖尾、水波纹、5 层物理内聚 Bloom 柔光

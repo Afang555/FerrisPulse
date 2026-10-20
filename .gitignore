@@ -39,7 +39,6 @@ aumid_debug.txt
 # 4. 图片资源管控 (仅允许官方 Logo 与核心 UI 矢量资源)
 *.png
 !app.png
-!resources/*.png
 
 # 5. 文本与配置管控
 *.txt
@@ -51,4 +50,3 @@ aumid_debug.txt
 !tools/
 !docs/
 !src/
-!resources/

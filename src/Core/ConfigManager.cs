@@ -3,6 +3,7 @@
 // 所属区域: Core (核心管理层)
 // 核心职责:
 //   集中管理用户配置与状态在 Windows 注册表 (HKCU\Software\FerrisPulse) 的持久化存取
+//   自动检查更新默认关闭，用户可在关于页明确开启；手动检查更新不受开关限制。
 // 依赖关系: 无外部依赖
 //
 // ⚠️ AI 维护准则 (AI MAINTENANCE DIRECTIVE - DO NOT REMOVE) ⚠️:
@@ -118,7 +119,7 @@ namespace RazerBatteryTray
 
         public static bool GetAutoCheckUpdate()
         {
-            return GetBool(AutoCheckUpdate, true);
+            return GetBool(AutoCheckUpdate, false);
         }
 
         public static void SetAutoCheckUpdate(bool enabled)

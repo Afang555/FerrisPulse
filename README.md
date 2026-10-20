@@ -1,117 +1,82 @@
-﻿# ⚡ FerrisPulse · 灵脉 (跨品牌外设调度中心) v2.0.0
+﻿# FerrisPulse · 玄熊猫 P1 适配版
 
 <p align="center">
   <img src="app.png" width="108" height="108" alt="FerrisPulse Logo" />
 </p>
 
-<p align="center">
-  <b>从一个鼠标，到一整张桌面 · 跨品牌直连 · 自动 8000Hz</b><br>
-  <i>专为雷蛇、罗技、国产电竞外设打造的纯原生、极轻量 Windows 任务栏电量与硬件调度引擎</i>
-</p>
+本项目基于 **[Ferris-echo/FerrisPulse](https://github.com/Ferris-echo/FerrisPulse)** 二次开发，由 Afang555 维护当前适配分支，重点适配 **玄熊猫 P1 驱动（MetapandaMouse05）**，已在玄派玄熊猫 3395 P1 Pro Max 4K 与 4K 接收器上验证。
 
-<p align="center">
-  <a href="https://github.com/Ferris-echo/FerrisPulse/releases"><img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?style=flat-square&logo=windows" alt="Platform" /></a>
-  <a href="https://github.com/Ferris-echo/FerrisPulse"><img src="https://img.shields.io/badge/.NET%20Framework-4.0%20(Pure%20Native)-512BD4?style=flat-square&logo=dotnet" alt=".NET Framework" /></a>
-  <a href="https://github.com/Ferris-echo/FerrisPulse"><img src="https://img.shields.io/badge/Memory-~12%20MB%20RAM-00ff88?style=flat-square" alt="Memory" /></a>
-  <a href="https://github.com/Ferris-echo/FerrisPulse"><img src="https://img.shields.io/badge/CPU-0.00%25-00ff88?style=flat-square" alt="CPU" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL%20v3.0-blue.svg?style=flat-square" alt="License: GPL v3" /></a>
-</p>
+保留原项目的跨品牌外设框架、原作者署名与 GPLv3 许可证，在此基础上增加玄熊猫协议支持、按应用切换和界面反馈修复。本项目是社区适配版本，并非玄派官方驱动。
 
----
+- **当前项目**：[Afang555/FerrisPulse](https://github.com/Afang555/FerrisPulse)
+- **适配分支**：[MetapandaMouse05](https://github.com/Afang555/FerrisPulse/tree/MetapandaMouse05)
+- **原项目及致谢**：[Ferris-echo/FerrisPulse](https://github.com/Ferris-echo/FerrisPulse)
+- **问题反馈**：[Issues](https://github.com/Afang555/FerrisPulse/issues)
 
-## 📖 项目简介
+## 玄熊猫 P1 适配内容
 
-**FerrisPulse · 灵脉**（原名《雷蛇电量管家》）诞生于一个纯粹的极客初衷：**彻底干掉官方动辄 1GB、常驻 10+ 后台守护服务的臃肿驱动全家桶**（如 Razer Synapse 雷云、Logitech G HUB 等）。
+- 读取电量、连接状态、当前 DPI 档位与实际 X/Y DPI。
+- 软件按钮切换已有档位，硬件回读确认后同步按钮、硬件生效提示和托盘，并按设置显示 DPI 浮窗。
+- F5AC 4K 接收器支持 `125 Hz`、`250 Hz`、`500 Hz`、`1000 Hz`、`2000 Hz`、`4000 Hz`，界面统一显示完整数字和单位。
+- 按应用设置 DPI 与回报率，支持按 **DPI 值匹配** 或按 **档位编号选择**，离开规则后恢复进入前的实际设置。
+- 修复硬件已切换而 UI 延迟、第一次点击不更新、软件切档不弹浮窗等问题，增加锁竞争和旧状态覆盖的回归验证。
+- 关于页提供当前项目、使用说明、问题反馈和原项目入口，已移除赞赏二维码及内嵌资源。
 
-历经数月重构与底层硬件协议解构，2.0 时代正式蜕变为**跨品牌外设统一调度引擎**：
-* ⚡ **极致轻量**：纯 C# 5.0 / Win32 原生调用，零第三方 DLL 依赖，常驻内存仅约 **12.8 MB**，CPU 占用长期 **0.00%**。
-* 🎮 **8000Hz 独占感知**：日常 1000Hz 节能续航；进入 CS2、无畏契约、Apex 等全屏游戏瞬间毫秒级直切 4000Hz/8000Hz，退出游戏平滑回退。
-* 🎯 **战术级穿透 OSD**：全屏游戏中调节 DPI / 回报率，右下角无感浮现战术 OSD 与柔和声效，绝不切回桌面、绝不吞枪、100% 穿透防误触。
-* 🔋 **Win11 原生 Mica 美学**：暗黑圆角磨砂、任务栏原生彩色流光电量、多设备拖拽排序、独家智能静置休眠感知算法。
+### 档位与 DPI
 
----
+**档位编号和 DPI 没有固定对应关系。** 第 1、2、3……档是编号，档内保存的 DPI 可以由用户修改。
 
-## 🏛️ 系统架构与硬核技术亮点 (Architecture & Highlights)
+| 选择方式 | 行为 |
+|---|---|
+| 按档位编号 | 选择该编号的已有档位，实际 DPI 跟随此档内容 |
+| 按 DPI 值 | 从新读取的实际档位表匹配目标值，支持表顺序变化 |
 
-本项目完全采用现代模块化工程规范设计，适合作为桌面底层系统开发与软硬件交互的参考实践：
+当前适配只选择已有档位，不直接改写板载 DPI 数值。需要修改每档 DPI 时，请先在官方驱动中设置，再退出官方驱动后使用 FerrisPulse；找不到匹配值时不会猜测替代档位。
 
-```
-FerrisPulse/
-├── src/
-│   ├── Core/         # 单例守护、Win32 消息循环、注册表自启动守护、原子热更新
-│   ├── Hardware/     # 底层 HID 通信、私有协议解构 (Razer 90B / Logitech HID++ / CompX)
-│   ├── Models/       # 外设实体状态模型、配置持久化契约
-│   ├── Services/     # 前台游戏焦点检测仲裁、回报率动态调度、非阻塞声效反馈
-│   └── UI/           # Win11 Mica 窗体、GDI+ 高精度自绘引擎、零焦点穿透 OSD 浮窗
-└── build.bat         # 纯原生构建脚本 (调用系统内置 csc.exe，零工具链安装成本)
-```
+游戏 `800 DPI / 4000 Hz`、办公 `1600 DPI / 125 Hz` 是可编辑预设，需要鼠标已有对应 DPI。没有匹配应用时恢复进入规则前的基线，不会无条件套用办公预设。
 
-### 1. 跨品牌硬件私有 HID 协议原生逆向直连
-* **雷蛇 (Razer)**：解构专有 90 字节双向 Report 协议，直连 2.4G 接收器与有线通道，免开雷云实现毫秒级电量获取与回报率切换。
-* **罗技 (Logitech)**：自研原生 **HID++ 1.0 / 2.0+** 协议引擎，握手 Lightspeed 与统一接收器，直接读取固件全称与精准百分比。
-* **NuPhy (努斐)**：全系客制化键盘休眠超时调节、WinLock 锁、RGB 背光与无级亮度控制。
-* **国产电竞矩阵 (CompX 方案)**：深度适配 ATK、VGN、VXE、迈从 (MCHOSE)、狼蛛 (AULA) 等国产主流 8K 无线鼠标。
+### 连接与验证范围
 
-### 2. 100% 反作弊安全的游戏焦点仲裁引擎
-* **零内存读写，零 DLL 注入**：完全基于 Windows 原生 `GetForegroundWindow` 与 `GetWindowThreadProcessId` 进行进程特征比对。
-* **严苛的仲裁机制**：内置 1200ms 窗口切换防抖、全屏独占排他性判断、浏览器与视频播放器防误触白名单，确保在高烈度竞技中绝不误判、绝无作弊封号风险。
+| 端点 | VID / PID | 当前开放回报率 |
+|---|---|---|
+| 4K 无线接收器 | 3554 / F5AC | 125、250、500、1000、2000、4000 Hz |
+| 旧 1K 无线端点 | 3554 / F5A9 | 125、1000 Hz |
+| 有线端点 | 3554 / F5AB | 125、1000 Hz |
 
-### 3. 极速纯原生编译与零依赖设计
-* 抛弃现代前端框架（Electron / Tauri）的数百兆开销，严格遵循 **C# 5.0 / .NET Framework 4.0** 语法基准。
-* 只要是 Windows 10 / 11 操作系统，系统原生自带运行环境，解压单文件即可直接运行。
+本轮 F5AC 六档已完成官方软件抓包、独立写入及回读；这些验证不等同于专用仪器测量实际报告频率。F5AB 保留此前适配，本轮未做有线实机写入；高 DPI 扩展编码、实体 DPI 按键的即时监听及其他型号需另行验证，不能仅按相同 VID 推广支持。
 
----
+## 使用与更新
 
-## 🛡️ 反作弊与安全性声明 (Anti-Cheat & Security FAQ)
+1. 从当前适配分支构建并运行 `FerrisPulse.exe`，先退出官方 Mouse Drive Beta，避免同时通信。
+2. 主界面选择已有 DPI 档位或已支持的回报率；设置成功以硬件回读为准。
+3. 按应用规则入口：托盘右键 → **玄熊猫 · 按应用设置…**，选择实际前台 exe 和当前设备端点。
+4. 换电脑或改变有线/无线连接方式后，重新选择设备端点及应用路径。
 
-> **问：在《无畏契约 (Valorant)》《CS2》《Apex 英雄》等竞技游戏中使用会被封号吗？**
+**自动检查更新默认关闭。** 在没有保存配置时，不执行开机和后台自动检查；用户可在关于页手动开启，也可使用“检查更新”按钮。已有用户显式保存的开关仍被尊重，本次操作已将当前电脑设置为关闭。
 
-**答：绝对不会。**
-1. **纯标准 Windows API**：灵脉仅使用操作系统官方公开的 `user32.dll` 查询“当前哪个窗口在最前台”，就像 OBS 或 Discord 检测你是否在玩游戏一样。
-2. **纯标准 HID 硬件通信**：切换回报率时，向鼠标发送的是该品牌鼠标固件公开支持的标准 HID 特征包，完全等同于你在官方驱动里点了一下“切换回报率”。
-3. **零敏感行为**：本程序没有对任何游戏进程调用 `OpenProcess(PROCESS_VM_READ/WRITE)`，不挂任何 API Hook，不注入任何 DLL，代码全部开源接受全球开发者审计。
+当前手动在线更新模块仍使用原项目发布源，尚未接入本适配分支的独立发布；需要玄熊猫适配代码时，请以本仓库 `MetapandaMouse05` 分支构建为准。
 
----
+## 本地构建
 
-## 🛠️ 本地编译与构建 (Build from Source)
-
-本项目无需安装几十 GB 的庞大 Visual Studio，仅需 Windows 原生自带的 .NET Framework 编译器即可构建：
+项目使用 C# 5 / .NET Framework 4.0 与 Win32 P/Invoke，不需要 NuGet 或第三方运行时 DLL。Windows 上使用系统 .NET Framework 编译器：
 
 ```cmd
-:: 1. 克隆代码仓库
-git clone https://github.com/Ferris-echo/FerrisPulse.git
-cd FerrisPulse
-
-:: 2. 执行一键原生编译 (调用系统内置 csc.exe)
+git clone --branch MetapandaMouse05 --single-branch https://github.com/Afang555/FerrisPulse.git FerrisPulse-Metapanda
+cd FerrisPulse-Metapanda
 build.bat
 ```
 
-编译完成后将在当前目录下直接生成高性能单文件可执行程序 `FerrisPulse.exe`。
+成功后在项目目录生成 `FerrisPulse.exe`。若已在本机开发，以 `D:\github\mouse` 主目录为准；二进制、临时日志和完整抓包不提交源码仓库。
 
----
+## 文档与继续适配
 
-## 🤝 参与贡献与设备适配 (Contributing)
+- [玄熊猫使用指南与协议参数](docs/metapanda-guide.md)：两种 DPI 选择模式、应用规则、六档回报率与实测限制。
+- [已知缺陷与回归要求](docs/metapanda-regressions.md)：根因、修复契约、自动化测试和单次点击验收。
+- [新电脑、新鼠标适配手册](docs/mouse-adaptation-handbook.md)：环境恢复、端点定位、单变量抓包、协议分析、接入与交接模板。
+- [系统架构](ARCHITECTURE.md)与 [维护入口](AGENTS.md)。
 
-我们非常欢迎社区极客共同丰富外设硬件支持库！
+原项目还提供其他品牌的外设能力；本分支保留相关代码，具体支持以对应型号协议及实测为准。新增鼠标请在本项目 Issues 提供完整型号、连接方式、接收器/固件和 VID/PID，必要时补充脱敏协议样本。
 
-如果你手里有尚未支持的无线鼠标/键盘（如雷捷、玄派、蜻蜓等国产新方案）：
-1. 欢迎在 **[Issues](https://github.com/Ferris-echo/FerrisPulse/issues)** 提交设备适配申请；
-2. 提供你的设备型号、连接方式（2.4G/有线）以及设备硬件 ID（`VID` 与 `PID`）；
-3. 若具备抓包能力，可提供 Wireshark / USBPcap 交互数据包，我们将以最快速度完成协议适配。
+## 来源与许可证
 
----
-
-## 📄 开源许可证 (License)
-
-本项目采用 **[GNU General Public License v3.0 (GPLv3)](LICENSE)** 协议开源。
-
-* **自由分享与修改**：你可以自由使用、研究、修改并分发本项目代码；
-* **开源传染性保护**：任何修改、衍生或整合本项目代码的二次开发作品，必须同样保持 **完全开源 (GPLv3)**；
-* **严禁闭源商业牟利**：严禁任何商业实体将本项目代码闭源打包、嵌入商业流氓软件或转售牟利。让我们共同守护纯粹的开源极客精神！
-
----
-
-<p align="center">
-  <b>如果 FerrisPulse 对你的日常桌面有所帮助，欢迎在 GitHub 点亮一颗 ⭐️ Star 支持作者！</b><br>
-  感谢每一位从 1.0《雷蛇电量管家》一路陪伴蜕变至今的玩家伙伴！
-</p>
+感谢 **Ferris-echo** 开源 FerrisPulse，并提供原有硬件协议、界面和外设调度框架。本分支在原项目基础上继续开发，玄熊猫适配修改及文档按项目现有 **[GNU GPL v3.0](LICENSE)** 许可证提供；原作者与贡献者的署名保留。

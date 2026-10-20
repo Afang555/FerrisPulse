@@ -8,7 +8,7 @@
 ## 1. 系统目录拓扑与功能认知地图 (Cognitive Map)
 
 ```
-D:\FerrisPulse · 灵脉\
+D:\github\mouse\
 ├── FerrisPulse.exe             [单一原生二进制可执行文件]
 ├── app.ico                     [程序主图标]
 ├── build.bat                   [单命令模块化极速构建脚本]
@@ -136,28 +136,34 @@ D:\FerrisPulse · 灵脉\
 
 ## 4. 玄熊猫协议与按应用配置
 
-玄熊猫当前以按应用配置为主要入口，用户操作见 [玄熊猫使用指南](docs/metapanda-guide.md)。以下模块均遵循 C# 5 / .NET 4.0、零外部依赖与 UTF-8 BOM 约束。
+维护入口：[新电脑、新鼠标适配手册](docs/mouse-adaptation-handbook.md)覆盖可复用的环境、抓包和接入流程；[缺陷记录与回归要求](docs/metapanda-regressions.md)记录第一次点击反馈、锁竞争、旧扫描、OSD 和参数语义的根因及验收。新增型号须显式接入，现有 Metapanda 调度不是通用品牌适配器。
 
-| 模块 / 路由 | 职责与契约 |
-| :--- | :--- |
-| `src/Hardware/MetapandaProtocol.cs` | 纯 17 字节 Report `08` 编解码；校验总和、命令、读内存地址/长度与写入回显。读取实际电量、已有 DPI 表与当前回报率；未知扩展编码不猜测。仅构造已有档位切换及 125/1000 Hz 命令，不改写 DPI 表。 |
-| `src/Hardware/MetapandaDeviceHelper.cs` | 枚举 VID `3554` / PID `F5A9`、`F5AB` 且 UsagePage `FF02` / Usage `2`、输入输出均 17 字节的端点；使用有超时与取消清理的原生重叠 I/O。每端点串行化通信，写入后重新读取并确认目标设置。 |
-| `src/Hardware/DeviceManager.cs` | 接入玄熊猫独立扫描结果，保留各 HID 端点身份。`VgnDeviceHelper.cs` 与 `UniversalGamingDeviceHelper.cs` 排除这些已知端点，避免重复归类。 |
-| `src/Models/ApplicationMouseProfile.cs` | 规则字段为完整 exe 路径、端点 ID、从 1 开始的 DPI 档位、125/1000 Hz 与启用状态；拒绝只有文件名、盘符相对路径、通配符等规则。 |
-| `src/Services/ApplicationMouseProfileService.cs` | 无硬件副作用的规则持久化与状态转换服务；按 exe 完整路径（忽略大小写）及精确端点 ID 匹配，第一个启用且有效的规则优先。保存使用同目录临时文件和原子替换，路径为 `%LocalAppData%\FerrisPulse\application-profiles.xml`。 |
-| `src/UI/Forms/ApplicationMouseProfilesDialog.cs` | 添加/浏览 exe、选择端点、编辑档位和回报率、校验重复规则与保存；编辑器本身不写硬件。 |
-| `src/UI/Forms/MainForm.Metapanda.cs` | 托盘顶部入口、前台完整路径读取、500 ms 调度和 750 ms 前台稳定判定、串行工作项及应用/退出恢复；编辑期间暂停调度。 |
-| `src/UI/Forms/MainForm.Hardware.cs` / `MainForm.UI.cs` | 主界面展示真实档位与电量，仅切换已有 DPI 档位、限制 125/1000 Hz；应用规则持有端点时旧游戏自动设置让位。 |
+用户操作与参数详见 [玄熊猫使用指南](docs/metapanda-guide.md)。档位是从 1 开始的编号，DPI 是用户可以修改的档位内容，不存在固定的编号到 DPI 映射。
 
-### 身份、状态与恢复约束
+| 模块 | 契约 |
+|---|---|
+| `src/Hardware/MetapandaProtocol.cs` | 纯 17 字节 Report 08 编解码；外层校验、内存块校验、写入匹配 ACK。六档回报率 125/250/500/1000/2000/4000 分别编码 08/04/02/01/10/20；DPI 命令只选择已有档位，不写档位数值。未知 DPI 扩展保留未知。 |
+| `src/Hardware/MetapandaDeviceHelper.cs` | VID 3554 / PID F5A9、F5AB、F5AC，UsagePage FF02 / Usage 2，输入输出报告长 17。每个完整 HID 路径独立加锁、原生异步 I/O 超时取消、写后回读。F5AC 开放六档；F5A9/F5AB 保留原有 125/1000，设置前核对该端点能力。 |
+| `src/Models/ApplicationMouseProfile.cs` | 规则包含完整 exe、精确端点 ID、启用状态、回报率及二选一的 DPI 目标。`DpiValue=0` 时使用 1~8 的 `DpiStage`；`DpiStage=0` 时匹配 `DpiValue`。`ResolveDpiStage(device)` 匹配当前实际 X/Y 表，重复值优先当前档，否则最小编号。`SupportsPollingRate` 校验目标能力。 |
+| `src/Services/ApplicationMouseProfileService.cs` | 无硬件副作用的 XML 持久化和状态转换；可选 dpi 属性向后兼容旧 stage 规则。使用同目录临时文件和原子替换保存。调度用新读取结果解析 DPI 值和能力；未知值不猜测。首次进入前记录原始 X/Y DPI、档位和回报率；恢复时按当前档位表寻找原值，缺失则保留待恢复状态。 |
+| `src/UI/Forms/ApplicationMouseProfilesDialog.cs` | 模式、目标值、六档回报率、设备快照匹配状态和可编辑游戏800/4000、办公1600/125预设。预设只修改选中规则。无硬件写入，编辑期间暂停调度。 |
+| `src/UI/Forms/MainForm.Metapanda.cs` | 托盘入口、完整前台路径、500ms 调度/750ms 稳定判定、串行规则所有权、实际状态快照、应用和退出恢复。 |
+| `src/UI/Forms/MainForm.Hardware.cs` / `MainForm.UI.cs` | 主界面和游戏模式按端点能力显示回报率，F5AC 保留全部六档按钮。应用规则优先于旧游戏自动设置。 |
+| `src/Hardware/DeviceManager.cs` / `VgnDeviceHelper.cs` / `UniversalGamingDeviceHelper.cs` | 独立扫描并排除已知玄熊猫路径，保留完整端点身份，避免共享 VID 导致重复归类或跨设备命令。 |
 
-- `DeviceId` 与 `HardwareFingerprint` 使用 `Metapanda:` 加完整 HID 路径，不按某一只样机序列号硬编码，也不按 VID/PID 合并同型号端点。无线与有线是独立端点；查找失败时不回退到任意同型号设备。此隔离设计不能代替多只同型号鼠标的实物 UI 验证。
-- `QueryDevices()` / `QueryDevice(id)` 返回端点实际状态；电量未知为 `-1`，未知 DPI/回报率不伪造默认值。已知基础 DPI 编码按 `(值 + 1) × 50` 解码；非零扩展字节尚未验证，整组设置保持未知。
-- `SetDpiStage(id, stage)` / `SetPollingRate(id, hz)` 只操作指定已连接端点，拒绝越界或未知状态；收到匹配回显后仍需读回目标设置才返回成功。支持上限为 1000 Hz，不能据此宣称支持 4K。
-- 服务首次应用规则前保存该端点原始档位与回报率；规则间切换沿用原始快照。已知前台路径无匹配时恢复快照，恢复成功才释放；暂时无法读取前台路径不等同于规则退出。断连会丢弃该端点的运行期快照，不转移到其他设备。
-- `Update()` 与编辑访问由调用方串行化。应用回调须同时确认 DPI 档位和回报率，只有两项均成功才能返回 `true`；失败清除成功缓存，下一次调度重试。主窗体回调对回报率写入失败尝试回滚，随后以实际回读为准。
-- `RestoreAll()` 为显式退出恢复路径，仍只处理连接且状态可确认的端点；失败保留快照供存活的服务重试，不能保证断电、强制结束或退出时通信失败后的恢复。
+规则保存于 `%LocalAppData%\FerrisPulse\application-profiles.xml`。exe 完整路径比较忽略大小写，端点 ID 使用精确匹配。不存在端点时不回退到其他同型号设备；换电脑、换有线/无线端点后需重新选择。
 
-### 当前验证边界
+回调必须同时确认 DPI 档位和回报率，失败清除成功缓存并重试。UI 写入与规则所有权串行化，排队回调重新检查所有权。规则切换沿用进入前快照，正常退出尝试恢复；断连或强制结束无法保证恢复。前台路径查询失败不视为规则退出。
 
-无线实机已确认 85% 电量、800/1600 DPI 档位及 125/1000 Hz 实际写入与回读。有线 `F5AB` 有抓包依据，尚未据此确认有线实机写入；高 DPI 扩展编码、4K 回报率及多只同型号设备的完整实物交互均不在当前验证结论内。使用时应关闭官方 Mouse Drive Beta，避免通信竞争。
+2026-10-20 本机 F5AC 实测：电量85%、实际档位800/1600、全部六档回报率写入和独立回读、游戏800/4000与办公1600/125规则切换及恢复通过。档位顺序变化后的按值匹配和恢复、X/Y差异、旧XML、能力隔离均有自动化验证。F5AB有线当前轮次未实测，高DPI扩展和多只同型号完整实物交互未验证。
+### Metapanda 即时界面反馈
+
+MainForm.Metapanda.Feedback.cs 维护UI线程上的确认快照。PublishMetapandaConfirmedState 接收设置后实际回读的数据，保留名称/主设备/优先级，统一更新当前设备、列表、托盘与性能界面；ReconcileMetapandaSnapshots 用 LastUpdated 排除更旧的扫描和迟到回调，允许更新的物理状态继续生效。设备设置新增 out MouseBatteryInfo confirmed 重载，旧bool签名保持兼容，所有权包装仍持锁直到写入和回读结束。
+
+ReadState 先读取前20字节，根据实际档位数量再读取剩余数据，最多44字节；不再对两档设备读取全部未使用内容。六档按钮统一采用完整数字及Hz，基础窗口宽度600逻辑像素。test_metapanda_feedback.ps1 覆盖完整同步、旧扫描/迟到回调隔离和新物理状态更新。
+
+手动DPI/回报率的成功UI回调使用 QueueMetapandaManualFeedback，不以保守的 HasActiveMetapandaApplicationProfile 返回值直接丢弃。后者在 Monitor.TryEnter 失败时返回true，适用于禁止并发写入，但不能用于丢弃已确认状态。新队列按端点合并，50ms UI计时器非阻塞尝试锁；持锁检查真实所有权后发布。窗体Dispose时释放计时器。test_metapanda_feedback_contention.ps1 覆盖锁忙重试、无需第二次点击、连续操作合并和真实规则接管。
+
+### 软件 DPI 切换 OSD
+
+PublishMetapandaConfirmedState 返回是否接受该回读，PublishMetapandaManualDpiState 只在接受后调用既有 OnDpiChanged，复用 dpiOsdEnabled 开关与 X/Y DPI 浮窗；普通状态刷新和回报率刷新不误触发 DPI 浮窗。TrySetMetapandaDpiStage 的手动入口（updateGamePreset=true）在所有权重试队列中调用该通知；旧游戏通知路径保持独立。test_metapanda_dpi_osd 使用原生 IsWindowVisible 验证非激活浮窗，而非 WinForms.Visible 内部状态。ModernSegmentButton 通过标准 AccessibleObject 提供 PushButton 角色、Click 默认动作、Pressed 选中状态和 StateChange 通知；test_segment_button_accessibility 验证真实 Click 事件、选中状态及禁用保护。

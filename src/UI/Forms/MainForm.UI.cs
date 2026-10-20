@@ -53,7 +53,7 @@ namespace RazerBatteryTray
             };
 
             int padX = (int)(18 * dpiScale);
-            int baseW = (int)(470 * dpiScale);
+            int baseW = (int)(600 * dpiScale);
             int cardW = baseW - (padX * 2);
 
             // ================= TOP BAR: SCHEME B FOCUS SELECTOR + BUTTONS =================
@@ -1170,8 +1170,8 @@ namespace RazerBatteryTray
             int gap = (int)(6 * dpiScale);
             int manageBtnW = segH;
 
-            // 回报率最多 5 档快捷显示
-            int count = Math.Max(1, Math.Min(5, Math.Min(btnRates.Length, (pollingRateValues != null) ? pollingRateValues.Length : 4)));
+            // 玄熊猫按端点能力显示全部六档；其他品牌保留最多五档快捷显示
+            int count = Math.Max(1, Math.Min(MetapandaDeviceHelper.IsMetapanda(selectedDevice) ? 8 : 5, Math.Min(btnRates.Length, (pollingRateValues != null) ? pollingRateValues.Length : 4)));
 
             // 1. 常规桌面回报率档位（末尾空出齿轮按钮位置）
             int remainingW = availableW - manageBtnW - gap;
@@ -1183,14 +1183,7 @@ namespace RazerBatteryTray
                 {
                     int hzVal = pollingRateValues[i];
                     btnRates[i].Visible = true;
-                    if (hzSegW < (int)(46 * dpiScale) && hzVal >= 1000)
-                    {
-                        btnRates[i].Text = (hzVal / 1000) + "K";
-                    }
-                    else
-                    {
-                        btnRates[i].Text = hzVal + " Hz";
-                    }
+                    btnRates[i].Text = hzVal + " Hz";
                     btnRates[i].Location = new Point(hzStartX + i * (hzSegW + gap), r2Y);
                     btnRates[i].Size = new Size(hzSegW, segH);
                     string tipText = string.Format("{0} Hz · 响应延迟 {1:F3} ms", hzVal, 1000.0 / hzVal);
@@ -1309,7 +1302,7 @@ namespace RazerBatteryTray
             }
             if (btnGameRates != null)
             {
-                int rateCount = Math.Max(1, Math.Min(5, Math.Min(btnGameRates.Length, (pollingRateValues != null) ? pollingRateValues.Length : 4)));
+                int rateCount = Math.Max(1, Math.Min(MetapandaDeviceHelper.IsMetapanda(selectedDevice) ? 8 : 5, Math.Min(btnGameRates.Length, (pollingRateValues != null) ? pollingRateValues.Length : 4)));
                 int gameSegW = (availableW - (rateCount - 1) * gap) / rateCount;
                 for (int i = 0; i < btnGameRates.Length; i++)
                 {
@@ -1320,14 +1313,7 @@ namespace RazerBatteryTray
                             int hzVal = pollingRateValues[i];
                             btnGameRates[i].Location = new Point(hzStartX + i * (gameSegW + gap), r5Y);
                             btnGameRates[i].Size = new Size(gameSegW, segH);
-                            if (gameSegW < (int)(46 * dpiScale) && hzVal >= 1000)
-                            {
-                                btnGameRates[i].Text = (hzVal / 1000) + "K";
-                            }
-                            else
-                            {
-                                btnGameRates[i].Text = hzVal + " Hz";
-                            }
+                            btnGameRates[i].Text = hzVal + " Hz";
                             string tip = string.Format("全屏电竞回报率: {0} Hz · 延迟 {1:F3} ms", hzVal, 1000.0 / hzVal);
                             toolTipTop.SetToolTip(btnGameRates[i], tip);
                             btnGameRates[i].Enabled = autoGameRateEnabled;
@@ -1523,7 +1509,7 @@ namespace RazerBatteryTray
             {
                 cardPerformance.Height = newCard2H;
                 int padX = (int)(18 * dpiScale);
-                int baseW = (int)(470 * dpiScale);
+                int baseW = (int)(600 * dpiScale);
                 int cardW = baseW - (padX * 2);
 
                 int card3Y = cardPerformance.Bottom + (int)(12 * dpiScale);
@@ -1823,7 +1809,7 @@ namespace RazerBatteryTray
             if (lblGameRateTitle != null) lblGameRateTitle.Visible = false;
             if (btnGameRates != null)
             {
-                int count = Math.Max(1, Math.Min(5, Math.Min(btnGameRates.Length, (pollingRateValues != null) ? pollingRateValues.Length : 4)));
+                int count = Math.Max(1, Math.Min(MetapandaDeviceHelper.IsMetapanda(selectedDevice) ? 8 : 5, Math.Min(btnGameRates.Length, (pollingRateValues != null) ? pollingRateValues.Length : 4)));
                 for (int i = 0; i < btnGameRates.Length; i++)
                 {
                     if (btnGameRates[i] != null)
@@ -2104,7 +2090,7 @@ namespace RazerBatteryTray
             if (curDev == null) return;
 
             string devName = !string.IsNullOrEmpty(curDev.DisplayName) ? curDev.DisplayName : (curDev.Brand + " 鼠标");
-            int[] supported = MetapandaDeviceHelper.IsMetapanda(curDev) ? new int[] { 125, 1000 } : (curDev.SupportedPollingRates != null && curDev.SupportedPollingRates.Length > 0)
+            int[] supported = MetapandaDeviceHelper.IsMetapanda(curDev) ? (curDev.SupportedPollingRates != null && curDev.SupportedPollingRates.Length > 0 ? curDev.SupportedPollingRates : new int[] { 125, 1000 }) : (curDev.SupportedPollingRates != null && curDev.SupportedPollingRates.Length > 0)
                 ? curDev.SupportedPollingRates
                 : new int[] { 125, 250, 500, 1000, 2000, 4000, 8000 };
 
@@ -2456,7 +2442,7 @@ namespace RazerBatteryTray
             try
             {
                 int padX = (int)(18 * dpiScale);
-                int baseW = (int)(470 * dpiScale);
+                int baseW = (int)(600 * dpiScale);
                 int cardW = baseW - (padX * 2);
 
                 // Top bar

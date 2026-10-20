@@ -189,8 +189,8 @@ namespace RazerBatteryTray
             this.Controls.Add(pnlPresetBar);
 
             int btnW = (pnlPresetBar.Width - S(16)) / 3;
-            var btnPresetStandard = CreatePresetButton("常规 4 档 (125~1K)", S(4), btnW, new int[] { 125, 250, 500, 1000 });
-            var btnPresetHigh = CreatePresetButton("电竞 4 档 (1K~8K)", S(4) + btnW + S(4), btnW, new int[] { 1000, 2000, 4000, 8000 });
+            var btnPresetStandard = CreatePresetButton("常规 4 档 (125~1000 Hz)", S(4), btnW, new int[] { 125, 250, 500, 1000 });
+            var btnPresetHigh = CreatePresetButton("电竞 4 档 (1000~8000 Hz)", S(4) + btnW + S(4), btnW, new int[] { 1000, 2000, 4000, 8000 });
 
             int[] preset5Rates;
             string preset5Text;
@@ -202,7 +202,7 @@ namespace RazerBatteryTray
             else
             {
                 preset5Rates = new int[] { 500, 1000, 2000, 4000, 8000 };
-                preset5Text = "全能 5 档 (500~8K)";
+                preset5Text = "全能 5 档 (500~8000 Hz)";
             }
             var btnPresetAll = CreatePresetButton(preset5Text, S(4) + (btnW + S(4)) * 2, btnW, preset5Rates);
 

@@ -413,51 +413,38 @@ namespace RazerBatteryTray
         {
             if (!MetapandaDeviceHelper.IsMetapanda(curDev) || curDev.DpiStages == null ||
                 targetStage < 1 || targetStage > curDev.DpiStages.Length) return false;
-            int dpi = curDev.DpiStages[targetStage - 1];
-            if (!SetUnownedMetapandaDpiStage(curDev.DeviceId, targetStage)) return false;
+            MouseBatteryInfo confirmed;
+            if (!SetUnownedMetapandaDpiStage(curDev.DeviceId, targetStage, out confirmed)) return false;
             this.BeginInvoke(new Action(() => {
-                if (HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
-                curDev.DpiStage = targetStage;
-                curDev.Dpi = dpi;
-                curDev.DpiY = dpi;
-                if (lastInfo != null && lastInfo.DeviceId == curDev.DeviceId)
-                {
-                    lastInfo.DpiStage = targetStage;
-                    lastInfo.Dpi = dpi;
-                    lastInfo.DpiY = dpi;
-                }
-                if (selectedDevice == null || selectedDevice.DeviceId != curDev.DeviceId) return;
-                if (updateGamePreset && isGamingActive && autoGameDpiEnabled)
-                {
-                    gameDpiStage = targetStage;
-                    SaveConfig();
-                }
-                HighlightDpiStage(targetStage);
-                UpdateStatusDisplay();
-                UpdatePollingRateDisplayStates();
+                QueueMetapandaManualFeedback(curDev.DeviceId, () => {
+                    if (selectedDevice != null && selectedDevice.DeviceId == curDev.DeviceId)
+                    {
+                        if (updateGamePreset && isGamingActive && autoGameDpiEnabled)
+                        { gameDpiStage = confirmed.DpiStage; SaveConfig(); }
+                        else if (!isGamingActive) desktopDpiStage = confirmed.DpiStage;
+                    }
+                    if (updateGamePreset) PublishMetapandaManualDpiState(confirmed);
+                    else PublishMetapandaConfirmedState(confirmed);
+                });
             }));
             return true;
         }
 
         private void SetMetapandaPollingRateFromUI(MouseBatteryInfo curDev, int hz)
         {
-            if (hz != 125 && hz != 1000) return;
+            if (!ApplicationMouseProfile.SupportsPollingRate(curDev, hz)) return;
             new Thread(() => {
-                if (!SetUnownedMetapandaPollingRate(curDev.DeviceId, hz)) return;
+                MouseBatteryInfo confirmed;
+                if (!SetUnownedMetapandaPollingRate(curDev.DeviceId, hz, out confirmed)) return;
                 this.BeginInvoke(new Action(() => {
-                    if (HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
-                    curDev.PollingRate = hz;
-                    if (lastInfo != null && lastInfo.DeviceId == curDev.DeviceId) lastInfo.PollingRate = hz;
-                    if (selectedDevice == null || selectedDevice.DeviceId != curDev.DeviceId) return;
-                    desktopPollingRate = hz;
-                    SaveConfig();
-                    UpdateDesktopRateButtonSelection(hz);
-                    UpdatePollingRateDisplayStates();
-                    UpdateStatusDisplay();
+                    QueueMetapandaManualFeedback(curDev.DeviceId, () => {
+                        if (selectedDevice != null && selectedDevice.DeviceId == curDev.DeviceId)
+                        { desktopPollingRate = confirmed.PollingRate; SaveConfig(); }
+                        PublishMetapandaConfirmedState(confirmed);
+                    });
                 }));
             }) { IsBackground = true }.Start();
         }
-
         public void SetDpiFromUI(int dpi)
         {
             var curDev = selectedDevice;
@@ -671,7 +658,7 @@ namespace RazerBatteryTray
 
         public void SetGamePollingRateFromUI(int hz)
         {
-            if (MetapandaDeviceHelper.IsMetapanda(selectedDevice) && hz != 125 && hz != 1000) return;
+            if (MetapandaDeviceHelper.IsMetapanda(selectedDevice) && !ApplicationMouseProfile.SupportsPollingRate(selectedDevice, hz)) return;
             gamePollingRate = hz;
             UpdateGameRateButtonSelection(hz);
             UpdatePollingRateDisplayStates();
@@ -1621,6 +1608,7 @@ namespace RazerBatteryTray
 
         private void ApplyDeviceStatus(List<MouseBatteryInfo> devices, bool showTipIfManual)
         {
+            ReconcileMetapandaSnapshots(devices);
             activeDevices = devices;
 
             if (devices != null && devices.Count > 0)
@@ -1662,7 +1650,7 @@ namespace RazerBatteryTray
 
             string brandTag = lastInfo.Brand == "Rapoo" ? "雷柏" : (lastInfo.Brand == "VGN" ? "VGN" : (lastInfo.Brand == "Razer" ? "雷蛇" : (lastInfo.Brand == "NuPhy" ? "NuPhy" : (lastInfo.Category == DeviceCategory.Headset ? "耳机" : (lastInfo.Category == DeviceCategory.Gamepad ? "手柄" : (lastInfo.Category == DeviceCategory.Keyboard ? "键盘" : "外设"))))));
             string dpiPart = (lastInfo.Category != DeviceCategory.Keyboard && lastInfo.Dpi > 0) ? (" · " + lastInfo.Dpi + " DPI") : "";
-            string ratePart = (lastInfo.Category != DeviceCategory.Keyboard && lastInfo.PollingRate > 0) ? (" · " + lastInfo.PollingRate + "Hz") : "";
+            string ratePart = (lastInfo.Category != DeviceCategory.Keyboard && lastInfo.PollingRate > 0) ? (" · " + lastInfo.PollingRate + " Hz") : "";
             string chgPart = lastInfo.IsSleeping ? "休眠待机" : (lastInfo.IsCharging ? "充电中" : "电池供电");
             string chgStr = lastInfo.IsSleeping ? "休眠待机 (移动唤醒)" : (lastInfo.IsCharging ? "正在充电" : "电池供电");
 
@@ -2571,7 +2559,7 @@ namespace RazerBatteryTray
                     btnRateManage.ForeColor = Color.FromArgb(210, 220, 235);
                 }
 
-                int[] baseSupported = isMetapandaMouse ? new int[] { 125, 1000 } : (info.SupportedPollingRates != null && info.SupportedPollingRates.Length > 0)
+                int[] baseSupported = isMetapandaMouse ? (info.SupportedPollingRates != null && info.SupportedPollingRates.Length > 0 ? info.SupportedPollingRates : new int[] { 125, 1000 }) : (info.SupportedPollingRates != null && info.SupportedPollingRates.Length > 0)
                     ? info.SupportedPollingRates
                     : (info.MaxPollingRate == 1000 ? new int[] { 125, 250, 500, 1000 } : new int[] { 125, 250, 500, 1000, 2000, 4000, 8000 });
 
@@ -2596,7 +2584,7 @@ namespace RazerBatteryTray
                     pollingRateValues = list.ToArray();
                 }
 
-                if (pollingRateValues != null && pollingRateValues.Length > 5)
+                if (!isMetapandaMouse && pollingRateValues != null && pollingRateValues.Length > 5)
                 {
                     List<int> clampList = new List<int>(pollingRateValues);
                     clampList.Sort();

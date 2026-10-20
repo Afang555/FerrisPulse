@@ -29,7 +29,8 @@ namespace RazerBatteryTray
         }
         public static byte[] BuildPollingRate(int hz)
         {
-            return hz == 1000 ? BuildSetting(0, 1) : hz == 125 ? BuildSetting(0, 8) : null;
+            int code = hz == 125 ? 8 : hz == 250 ? 4 : hz == 500 ? 2 : hz == 1000 ? 1 : hz == 2000 ? 16 : hz == 4000 ? 32 : 0;
+            return code == 0 ? null : BuildSetting(0, code);
         }
         public static byte[] BuildReadMemory(int address, int count)
         {
@@ -87,7 +88,7 @@ namespace RazerBatteryTray
             }
             state.DpiStages = xs; state.DpiStagesY = ys; state.DpiStageCount = count; state.DpiStage = stage + 1;
             state.Dpi = xs[stage]; state.DpiY = ys[stage]; state.IsXyIndependent = state.Dpi != state.DpiY;
-            state.PollingRate = memory[0] == 1 ? 1000 : memory[0] == 8 ? 125 : 0;
+            state.PollingRate = memory[0] == 1 ? 1000 : memory[0] == 2 ? 500 : memory[0] == 4 ? 250 : memory[0] == 8 ? 125 : memory[0] == 16 ? 2000 : memory[0] == 32 ? 4000 : 0;
             return true;
         }
     }

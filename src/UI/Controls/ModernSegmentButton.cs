@@ -3,7 +3,7 @@
 // 所属区域: UI/Controls (基础原子控件层)
 // 核心职责:
 //   分段按钮项（用于 DPI 档位选择、回报率选择等），具备选中/预设/悬停多种高光模式，
-//   支持自定义品牌强调色（AccentColor）。
+//   支持自定义品牌强调色（AccentColor）、标准无障碍点击动作与选中状态通知。
 // 依赖关系: RoundedCard
 //
 // ⚠️ AI 维护准则 (AI MAINTENANCE DIRECTIVE - DO NOT REMOVE) ⚠️:
@@ -30,7 +30,7 @@ namespace RazerBatteryTray
         public bool Selected
         {
             get { return isSelected; }
-            set { if (isSelected != value) { isSelected = value; Invalidate(); } }
+            set { if (isSelected != value) { isSelected = value; Invalidate(); AccessibilityNotifyClients(AccessibleEvents.StateChange, -1); } }
         }
 
         public bool IsPreset
@@ -49,6 +49,33 @@ namespace RazerBatteryTray
         {
             Cursor = Cursors.Hand;
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+        }
+
+        protected override AccessibleObject CreateAccessibilityInstance()
+        {
+            return new SegmentAccessibleObject(this);
+        }
+        private sealed class SegmentAccessibleObject : ControlAccessibleObject
+        {
+            private readonly ModernSegmentButton button;
+            public SegmentAccessibleObject(ModernSegmentButton owner) : base(owner) { button = owner; }
+            public override AccessibleRole Role { get { return AccessibleRole.PushButton; } }
+            public override string Name
+            {
+                get { return string.IsNullOrEmpty(button.AccessibleName) ? button.Text : button.AccessibleName; }
+                set { button.AccessibleName = value; }
+            }
+            public override string DefaultAction { get { return "Click"; } }
+            public override AccessibleStates State
+            {
+                get { return base.State | (button.Selected ? AccessibleStates.Pressed : AccessibleStates.None); }
+            }
+            public override void DoDefaultAction()
+            {
+                if (!button.Enabled || button.IsDisposed) return;
+                if (button.InvokeRequired) button.BeginInvoke(new Action(() => { if (button.Enabled && !button.IsDisposed) button.OnClick(EventArgs.Empty); }));
+                else button.OnClick(EventArgs.Empty);
+            }
         }
 
         protected override void OnTextChanged(EventArgs e)

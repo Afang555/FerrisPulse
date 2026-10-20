@@ -41,18 +41,28 @@ namespace RazerBatteryTray
         }
         private bool SetUnownedMetapandaDpiStage(string deviceId, int stage)
         {
+            MouseBatteryInfo confirmed; return SetUnownedMetapandaDpiStage(deviceId, stage, out confirmed);
+        }
+        private bool SetUnownedMetapandaDpiStage(string deviceId, int stage, out MouseBatteryInfo confirmed)
+        {
             lock (metapandaProfileGate)
             {
+                confirmed = null;
                 if (metapandaProfilesStopping || (metapandaProfiles != null && metapandaProfiles.HasActiveProfile(deviceId))) return false;
-                return MetapandaDeviceHelper.SetDpiStage(deviceId, stage);
+                return MetapandaDeviceHelper.SetDpiStage(deviceId, stage, out confirmed);
             }
         }
         private bool SetUnownedMetapandaPollingRate(string deviceId, int hz)
         {
+            MouseBatteryInfo confirmed; return SetUnownedMetapandaPollingRate(deviceId, hz, out confirmed);
+        }
+        private bool SetUnownedMetapandaPollingRate(string deviceId, int hz, out MouseBatteryInfo confirmed)
+        {
             lock (metapandaProfileGate)
             {
+                confirmed = null;
                 if (metapandaProfilesStopping || (metapandaProfiles != null && metapandaProfiles.HasActiveProfile(deviceId))) return false;
-                return MetapandaDeviceHelper.SetPollingRate(deviceId, hz);
+                return MetapandaDeviceHelper.SetPollingRate(deviceId, hz, out confirmed);
             }
         }
         private void BeginMetapandaGameTransition(MouseBatteryInfo curDev)
@@ -81,7 +91,7 @@ namespace RazerBatteryTray
                 MouseBatteryInfo actual = MetapandaDeviceHelper.QueryDevice(device.DeviceId);
                 if (actual == null || !actual.IsConnected) return;
                 if (actual.DpiStage > 0) desktopDpiStage = actual.DpiStage;
-                if (actual.PollingRate == 125 || actual.PollingRate == 1000) desktopPollingRate = actual.PollingRate;
+                if (ApplicationMouseProfile.SupportsPollingRate(actual, actual.PollingRate)) desktopPollingRate = actual.PollingRate;
             }
         }
         private void OpenMetapandaApplicationProfiles()
@@ -167,11 +177,7 @@ namespace RazerBatteryTray
             {
                 BeginInvoke(new Action(() =>
                 {
-                    if (activeDevices != null)
-                        for (int i = 0; i < activeDevices.Count; i++)
-                            if (activeDevices[i].DeviceId == deviceId) activeDevices[i] = after;
-                    if (selectedDevice != null && selectedDevice.DeviceId == deviceId)
-                    { selectedDevice = after; UpdateUI(after, false); }
+                    PublishMetapandaConfirmedState(after);
                 }));
             }
             catch (InvalidOperationException) { }

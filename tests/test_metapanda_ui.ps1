@@ -23,12 +23,12 @@ foreach ($name in @('SetDpiFromUI', 'SetPollingRateFromUI', 'ApplyGamePollingRat
     Assert-Contains (Get-Method $hardware $name) 'MetapandaDeviceHelper.IsMetapanda(curDev)' "$name must route Metapanda before vendor fallback"
 }
 Assert-Contains (Get-Method $ui 'SwitchDpiStageByIndex') 'MetapandaDeviceHelper.IsMetapanda(curDev)' 'Stage buttons need an exact Metapanda route'
-Assert-Contains (Get-Method $hardware 'TrySetMetapandaDpiStage') 'if (!SetUnownedMetapandaDpiStage(curDev.DeviceId, targetStage)) return false;' 'Failed DPI writes must never update state'
+Assert-Contains (Get-Method $hardware 'TrySetMetapandaDpiStage') 'if (!SetUnownedMetapandaDpiStage(curDev.DeviceId, targetStage, out confirmed)) return false;' 'Failed DPI writes must never update state'
 Assert-Contains (Get-Method $hardware 'TrySetMetapandaDpiStage') 'curDev.DpiStages.Length' 'DPI stage values must come from the selected device'
-Assert-Contains (Get-Method $hardware 'SetMetapandaPollingRateFromUI') 'if (!SetUnownedMetapandaPollingRate(curDev.DeviceId, hz)) return;' 'Failed rate writes must never update state'
+Assert-Contains (Get-Method $hardware 'SetMetapandaPollingRateFromUI') 'if (!SetUnownedMetapandaPollingRate(curDev.DeviceId, hz, out confirmed)) return;' 'Failed rate writes must never update state'
 Assert-Contains (Get-Method $hardware 'StartGameMonitor') 'HasActiveMetapandaApplicationProfile(curDev.DeviceId)' 'App profiles must take precedence over game fallback'
 Assert-Contains (Get-Method $ui 'OpenDpiManagementDialog') '仅支持切换已有 DPI 档位' 'DPI management must explain stage-only support'
-Assert-Contains (Get-Method $hardware 'UpdatePerformanceSection') 'isMetapandaMouse ? new int[] { 125, 1000 }' 'Only confirmed Metapanda rates may be offered'
+Assert-Contains (Get-Method $hardware 'UpdatePerformanceSection') 'isMetapandaMouse ? (info.SupportedPollingRates' 'Only confirmed Metapanda rates may be offered'
 Assert-Contains (Get-Method $hardware 'UpdatePerformanceSection') 'isMetapandaMouse ? baseSupported' 'Saved custom rate choices must not expose unsupported rates'
 Assert-Contains (Get-Method $ui 'UpdatePollingRateDisplayStates') 'currentActiveHz = selectedDevice.PollingRate;' 'Hardware badge must show confirmed state'
 Assert-Contains (Get-Method $ui 'RelayoutDpiButtons') 'int count = Math.Min(5, dpiStageList.Count);' 'Unknown DPI tables must not index a fabricated stage'
@@ -64,6 +64,14 @@ if ($env:FERRISPULSE_TEST_ASSEMBLY) {
         $null = $update.Invoke($form, @($info, [Drawing.Color]::Cyan))
         $rates = $mainType.GetField('pollingRateValues', $flags).GetValue($form)
         if (($rates -join ',') -ne '125,1000') { throw 'Runtime UI exposed unsupported rates' }
+        $info.DeviceId = 'Metapanda:\\?\hid#vid_3554&pid_f5ac&mi_01#ui-test-missing-device'
+        $info.SupportedPollingRates = [int[]]@(125,250,500,1000,2000,4000)
+        $mainType.GetField('selectedDevice', $flags).SetValue($form,$info)
+        $null = $update.Invoke($form, @($info, [Drawing.Color]::Cyan))
+        $rates = $mainType.GetField('pollingRateValues', $flags).GetValue($form)
+        if (($rates -join ',') -ne '125,250,500,1000,2000,4000') { throw '4K UI must retain all six rates including 125 and 4000' }
+        $buttons = $mainType.GetField('btnRates', $flags).GetValue($form)
+        if ($buttons[5].Text -ne '4000 Hz') { throw 'All polling rate buttons must use the full numeric Hz format' }
         $stages = $mainType.GetField('dpiStageValues', $flags).GetValue($form)
         if (($stages -join ',') -ne '400,800,1600') { throw 'Runtime UI lost selected-device DPI stages' }
         $setter = $mainType.GetMethod('TrySetMetapandaDpiStage', $flags)
@@ -81,6 +89,14 @@ if ($env:FERRISPULSE_TEST_ASSEMBLY) {
         $info.DpiStage = 0
         $info.Dpi = 0
         $null = $update.Invoke($form, @($info, [Drawing.Color]::Cyan))
+        $info.DeviceId = 'Metapanda:\\?\hid#vid_3554&pid_f5ac&mi_01#ui-test-missing-device'
+        $info.SupportedPollingRates = [int[]]@(125,250,500,1000,2000,4000)
+        $mainType.GetField('selectedDevice', $flags).SetValue($form,$info)
+        $null = $update.Invoke($form, @($info, [Drawing.Color]::Cyan))
+        $rates = $mainType.GetField('pollingRateValues', $flags).GetValue($form)
+        if (($rates -join ',') -ne '125,250,500,1000,2000,4000') { throw '4K UI must retain all six rates including 125 and 4000' }
+        $buttons = $mainType.GetField('btnRates', $flags).GetValue($form)
+        if ($buttons[5].Text -ne '4000 Hz') { throw 'All polling rate buttons must use the full numeric Hz format' }
         $stages = $mainType.GetField('dpiStageValues', $flags).GetValue($form)
         if ($stages.Length -ne 0) { throw 'Unknown DPI table reused another device stages' }
         Write-Host 'PASS: Runtime Metapanda controls, unknown state, and failed-write state isolation'
@@ -90,6 +106,10 @@ if ($env:FERRISPULSE_TEST_ASSEMBLY) {
 }
 foreach ($name in @('TrySetMetapandaDpiStage','SetMetapandaPollingRateFromUI','ApplyGamePollingRate','RestoreDesktopPollingRate')) {
     $method = Get-Method $hardware $name
+    if ($name -in @('TrySetMetapandaDpiStage','SetMetapandaPollingRateFromUI')) {
+        Assert-Contains $method 'QueueMetapandaManualFeedback(curDev.DeviceId' 'Manual feedback must survive scheduler contention'
+        continue
+    }
     if ($method -notmatch 'BeginInvoke\(new Action\(\(\) => \{\s*if \([^\r\n]*HasActiveMetapandaApplicationProfile\(curDev.DeviceId\)') { throw "$name must recheck profile ownership in its UI callback" }
     Assert-Contains $method 'HasActiveMetapandaApplicationProfile(curDev.DeviceId)' "$name callbacks must preserve profile-owned UI state"
     if ($method -match 'MetapandaDeviceHelper\.Set(?:DpiStage|PollingRate)\(') { throw "$name bypasses profile gate" }

@@ -11,7 +11,7 @@ using System.IO;
 using System.Collections.Generic;
 using RazerBatteryTray;
 namespace RazerBatteryTray {
- public class MouseBatteryInfo { public string DeviceId, DisplayName, Transport; public bool IsConnected; public int DpiStage,PollingRate; public int[] DpiStages; }
+ public class MouseBatteryInfo { public string DeviceId, DisplayName, Transport; public bool IsConnected; public int DpiStage,PollingRate; public int[] DpiStages, DpiStagesY, SupportedPollingRates; }
 }
 class ProfileTests {
  static void Check(bool b,string m) { if(!b) throw new Exception(m); }
@@ -74,7 +74,7 @@ class ProfileTests {
  s.Profiles[0].Enabled=true;
  devices.Add(Device("Metapanda:B")); s.Update(@"C:\Games\game.exe",devices,apply);
  Check(last=="Metapanda:B:2:1000" && s.HasActiveProfile("Metapanda:A") && s.HasActiveProfile("Metapanda:B"),"identical devices remain isolated");
- s.Profiles[1].PollingRate=4000; s.Update(@"C:\Games\game.exe",devices,apply);
+ s.Profiles[1].PollingRate=8000; s.Update(@"C:\Games\game.exe",devices,apply);
  Check(!s.HasActiveProfile("Metapanda:B") && s.HasActiveProfile("Metapanda:A"),"invalid rate releases only target endpoint");
  s.Update(@"C:\other.exe",devices,delegate {throw new IOException("fake disconnected write");});
  Check(s.HasActiveProfile("Metapanda:A"),"callback exception retains pending restore");

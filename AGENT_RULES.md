@@ -61,13 +61,15 @@
 - **头部准则**: 每个代码文件头部必须永久保留：
   `// ⚠️ AI 维护准则 (AI MAINTENANCE DIRECTIVE - DO NOT REMOVE) ⚠️`
 - **文档同步**: 任何新增模块、公共方法调整或协议变更，必须同步维护 `ARCHITECTURE.md` 目录。
+- **鼠标适配与回归**: 维护前阅读 [适配手册](docs/mouse-adaptation-handbook.md) 和 [缺陷回归记录](docs/metapanda-regressions.md)。涉及设置反馈时验证完整一次点击链路、锁竞争重试、旧扫描隔离、OSD 开关与规则优先；不以局部函数耗时或静态断言代替实机结论。新增缺陷同步触发条件、根因、修复契约、测试与证据限制。
+- **参数与证据**: 档位编号不固定对应 DPI；按值匹配、按编号选择和修改板载数值是不同能力。新型号按端点验证传输和能力，不外推回报率。未验证项明确标注。
 
 ---
 
 ## 7. 工作区聚焦与文件系统卫生规范 (Workspace Focus & Repository Cleanliness)
 - **工作区唯一锁定**:
-  - 本项目唯一有效工作区为 **`D:\FerrisPulse · 灵脉\`**。
-  - 严禁向已弃用的 `proud-hertz` 或其他外部目录写入任何代码、文档或脚本。
+  - 当前主工作区为 **`D:\github\mouse`**；换电脑时以用户明确指定的主目录为准。
+  - 不向旧开发目录或聊天 outputs 继续写主代码；交付快照不能替代主仓库。迁移时明确未提交修改、配置和被忽略证据是否已携带。
 - **根目录纯净化 (Zero Scatter in Root)**:
   - 根目录只允许保留核心工程标准文件：
     `README.md`, `CHANGELOG.md`, `LICENSE`, `ARCHITECTURE.md`, `AGENT_RULES.md`, `AGENTS.md`, `build.bat`, `.gitignore`, `version.json`, `app.ico`, `app.png`。

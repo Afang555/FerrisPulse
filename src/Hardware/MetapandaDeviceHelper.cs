@@ -26,7 +26,7 @@ namespace RazerBatteryTray
         {
             if (string.IsNullOrEmpty(path)) return false;
             string value = path.ToLowerInvariant();
-            return value.Contains("vid_3554&pid_f5a9&") || value.Contains("vid_3554&pid_f5ab&");
+            return value.Contains("vid_3554&pid_f5a9&") || value.Contains("vid_3554&pid_f5ab&") || value.Contains("vid_3554&pid_f5ac&");
         }
         public static bool IsMetapanda(MouseBatteryInfo device)
         {
@@ -61,7 +61,7 @@ namespace RazerBatteryTray
                         try
                         {
                             RazerDeviceHelper.HIDD_ATTRIBUTES attributes = new RazerDeviceHelper.HIDD_ATTRIBUTES(); attributes.Size = Marshal.SizeOf(attributes);
-                            if (!RazerDeviceHelper.HidD_GetAttributes(handle, ref attributes) || attributes.VendorID != 0x3554 || (attributes.ProductID != 0xF5A9 && attributes.ProductID != 0xF5AB)) continue;
+                            if (!RazerDeviceHelper.HidD_GetAttributes(handle, ref attributes) || attributes.VendorID != 0x3554 || (attributes.ProductID != 0xF5A9 && attributes.ProductID != 0xF5AB && attributes.ProductID != 0xF5AC)) continue;
                             IntPtr preparsed; if (!RazerDeviceHelper.HidD_GetPreparsedData(handle, out preparsed)) continue;
                             RazerDeviceHelper.HIDP_CAPS caps;
                             try { if (RazerDeviceHelper.HidP_GetCaps(preparsed, out caps) != 0x110000) continue; }
@@ -143,19 +143,21 @@ namespace RazerBatteryTray
             state.DeviceName = string.IsNullOrEmpty(endpoint.Name) ? "玄熊猫鼠标" : endpoint.Name;
             state.HardwareId = "HID:3554:" + endpoint.Pid.ToString("X4"); state.HardwareFingerprint = state.DeviceId;
             state.Transport = endpoint.Pid == 0xF5AB ? "USB" : "2.4G"; state.BatteryPercent = -1; state.ExactBatteryPercent = -1;
-            state.SupportedPollingRates = new int[] { 125, 1000 }; state.MaxPollingRate = 1000;
+            state.SupportedPollingRates = endpoint.Pid == 0xF5AC ? new int[] { 125, 250, 500, 1000, 2000, 4000 } : new int[] { 125, 1000 }; state.MaxPollingRate = endpoint.Pid == 0xF5AC ? 4000 : 1000;
             state.IsDonglePresent = true; state.LastUpdated = DateTime.Now;
             state.IsConnected = Online(handle, endpoint); if (!state.IsConnected) return state;
             int battery; bool charging;
             if (MetapandaProtocol.DecodeBattery(Exchange(handle, MetapandaProtocol.BuildCommand(4), endpoint.InputLength), out battery, out charging))
             { state.BatteryPercent = battery; state.ExactBatteryPercent = battery; state.IsCharging = charging; }
-            byte[] memory = new byte[44]; bool complete = true;
-            for (int address = 0; address < memory.Length; address += 10)
+            byte[] memory = new byte[44]; bool complete = true; int required = 20;
+            for (int address = 0; address < required; address += 10)
             {
-                byte[] request = MetapandaProtocol.BuildReadMemory(address, Math.Min(10, memory.Length - address));
+                byte[] request = MetapandaProtocol.BuildReadMemory(address, Math.Min(10, required - address));
                 if (!MetapandaProtocol.CopyMemoryResponse(request, Exchange(handle, request, endpoint.InputLength), memory)) { complete = false; break; }
+                if (address == 10 && memory[10] < 8) required = Math.Max(20, 12 + (memory[10] + 1) * 4);
             }
             if (complete) MetapandaProtocol.DecodeSettings(memory, state);
+            state.LastUpdated = DateTime.Now;
             return state;
         }
         public static List<MouseBatteryInfo> QueryDevices()
@@ -187,8 +189,9 @@ namespace RazerBatteryTray
                 try { return ReadState(handle, endpoint); } finally { RazerDeviceHelper.CloseHandle(handle); }
             }
         }
-        private static bool Set(string deviceId, int value, bool dpi)
+        private static bool Set(string deviceId, int value, bool dpi, out MouseBatteryInfo confirmed)
         {
+            confirmed = null;
             byte[] command = dpi ? MetapandaProtocol.BuildDpiStage(value) : MetapandaProtocol.BuildPollingRate(value);
             if (command == null) return false;
             Endpoint endpoint = Find(deviceId); if (endpoint == null) return false;
@@ -198,16 +201,19 @@ namespace RazerBatteryTray
                 try
                 {
                     MouseBatteryInfo before = ReadState(handle, endpoint);
-                    if (!before.IsConnected || (dpi && (before.DpiStageCount == 0 || value > before.DpiStageCount)) || (!dpi && before.PollingRate == 0)) return false;
-                    if ((dpi ? before.DpiStage : before.PollingRate) == value) return true;
-                    if (!Online(handle, endpoint) || Exchange(handle, command, endpoint.InputLength) == null) return false;
+                    if (!before.IsConnected || (dpi && (before.DpiStageCount == 0 || value > before.DpiStageCount)) || (!dpi && (before.PollingRate == 0 || Array.IndexOf(before.SupportedPollingRates, value) < 0))) return false;
+                    if ((dpi ? before.DpiStage : before.PollingRate) == value) { confirmed = before; return true; }
+                    if (Exchange(handle, command, endpoint.InputLength) == null) return false;
                     MouseBatteryInfo after = ReadState(handle, endpoint);
-                    return after.IsConnected && (dpi ? after.DpiStage : after.PollingRate) == value;
+                    if (!after.IsConnected || (dpi ? after.DpiStage : after.PollingRate) != value) return false;
+                    confirmed = after; return true;
                 }
                 finally { RazerDeviceHelper.CloseHandle(handle); }
             }
         }
-        public static bool SetDpiStage(string deviceId, int oneBasedStage) { return Set(deviceId, oneBasedStage, true); }
-        public static bool SetPollingRate(string deviceId, int hz) { return Set(deviceId, hz, false); }
+        public static bool SetDpiStage(string deviceId, int oneBasedStage) { MouseBatteryInfo confirmed; return Set(deviceId, oneBasedStage, true, out confirmed); }
+        public static bool SetDpiStage(string deviceId, int oneBasedStage, out MouseBatteryInfo confirmed) { return Set(deviceId, oneBasedStage, true, out confirmed); }
+        public static bool SetPollingRate(string deviceId, int hz) { MouseBatteryInfo confirmed; return Set(deviceId, hz, false, out confirmed); }
+        public static bool SetPollingRate(string deviceId, int hz, out MouseBatteryInfo confirmed) { return Set(deviceId, hz, false, out confirmed); }
     }
 }

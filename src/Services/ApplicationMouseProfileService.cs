@@ -12,7 +12,7 @@ namespace RazerBatteryTray
     {
         private sealed class EndpointState
         {
-            public int DesktopStage, DesktopRate, AppliedStage, AppliedRate;
+            public int DesktopStage, DesktopDpi, DesktopDpiY, DesktopRate, AppliedStage, AppliedRate;
         }
         private readonly string storagePath;
         private readonly Dictionary<string, EndpointState> states = new Dictionary<string, EndpointState>(StringComparer.Ordinal);
@@ -42,10 +42,11 @@ namespace RazerBatteryTray
                 if (document.DocumentElement == null || document.DocumentElement.Name != "profiles") { Profiles = loaded; return; }
                 foreach (XmlNode node in document.DocumentElement.SelectNodes("profile"))
                 {
-                    int stage, rate; bool enabled;
+                    int stage, rate, dpi = 0; bool enabled;
                     if (!int.TryParse(Attribute(node, "stage"), out stage) ||
                         !int.TryParse(Attribute(node, "rate"), out rate) || !bool.TryParse(Attribute(node, "enabled"), out enabled)) continue;
-                    var profile = new ApplicationMouseProfile { ExecutablePath = Attribute(node, "exe"), DeviceId = Attribute(node, "device"), DpiStage = stage, PollingRate = rate, Enabled = enabled };
+                    if (Attribute(node, "dpi").Length > 0 && !int.TryParse(Attribute(node, "dpi"), out dpi)) continue;
+                    var profile = new ApplicationMouseProfile { DpiValue = dpi, ExecutablePath = Attribute(node, "exe"), DeviceId = Attribute(node, "device"), DpiStage = stage, PollingRate = rate, Enabled = enabled };
                     if (profile.IsValid()) loaded.Add(profile);
                 }
             }
@@ -77,6 +78,7 @@ namespace RazerBatteryTray
                         writer.WriteAttributeString("exe", profile.ExecutablePath);
                         writer.WriteAttributeString("device", profile.DeviceId);
                         writer.WriteAttributeString("stage", XmlConvert.ToString(profile.DpiStage));
+                        if (profile.DpiValue > 0) writer.WriteAttributeString("dpi", XmlConvert.ToString(profile.DpiValue));
                         writer.WriteAttributeString("rate", XmlConvert.ToString(profile.PollingRate));
                         writer.WriteAttributeString("enabled", XmlConvert.ToString(profile.Enabled));
                         writer.WriteEndElement();
@@ -105,6 +107,19 @@ namespace RazerBatteryTray
             return device.DpiStages != null && stage > 0 && stage <= device.DpiStages.Length && device.DpiStages[stage - 1] > 0;
         }
 
+        private static int StageY(MouseBatteryInfo device, int stage)
+        {
+            return device.DpiStagesY != null && stage <= device.DpiStagesY.Length ? device.DpiStagesY[stage - 1] : device.DpiStages[stage - 1];
+        }
+        private static int RestoreStage(MouseBatteryInfo device, EndpointState state)
+        {
+            if (KnownStage(device, state.DesktopStage) && device.DpiStages[state.DesktopStage - 1] == state.DesktopDpi && StageY(device, state.DesktopStage) == state.DesktopDpiY) return state.DesktopStage;
+            if (device.DpiStages != null)
+                for (int i = 0; i < device.DpiStages.Length; i++)
+                    if (device.DpiStages[i] == state.DesktopDpi && StageY(device, i + 1) == state.DesktopDpiY) return i + 1;
+            return 0;
+        }
+
         // Invoke from a single debounced foreground scheduler. Callback must verify BOTH settings
         // and return true only on complete success. Failures retry on the next scheduler tick.
         // Unknown foreground path is treated as a transient query failure: retain ownership.
@@ -131,17 +146,18 @@ namespace RazerBatteryTray
                 EndpointState state;
                 states.TryGetValue(device.DeviceId, out state);
                 var profile = restoreAll ? null : Resolve(executablePath, device.DeviceId);
-                if (profile != null && !KnownStage(device, profile.DpiStage)) profile = null;
+                int targetStage = profile == null ? 0 : profile.ResolveDpiStage(device);
+                if (profile != null && (targetStage == 0 || !ApplicationMouseProfile.SupportsPollingRate(device, profile.PollingRate))) profile = null;
                 if (state == null)
                 {
                     if (profile == null || !KnownStage(device, device.DpiStage) ||
-                        (device.PollingRate != 125 && device.PollingRate != 1000)) continue;
-                    state = new EndpointState { DesktopStage = device.DpiStage, DesktopRate = device.PollingRate };
+                        !ApplicationMouseProfile.SupportsPollingRate(device, device.PollingRate)) continue;
+                    state = new EndpointState { DesktopStage = device.DpiStage, DesktopDpi = device.DpiStages[device.DpiStage - 1], DesktopDpiY = StageY(device, device.DpiStage), DesktopRate = device.PollingRate };
                     states.Add(device.DeviceId, state);
                 }
-                int stage = profile == null ? state.DesktopStage : profile.DpiStage;
+                int stage = profile == null ? RestoreStage(device, state) : targetStage;
                 int rate = profile == null ? state.DesktopRate : profile.PollingRate;
-                if (!KnownStage(device, stage)) continue;
+                if (!KnownStage(device, stage) || !ApplicationMouseProfile.SupportsPollingRate(device, rate)) continue;
                 bool success = state.AppliedStage == stage && state.AppliedRate == rate &&
                     device.DpiStage == stage && device.PollingRate == rate;
                 if (!success)

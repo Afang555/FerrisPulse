@@ -906,6 +906,8 @@ namespace RazerBatteryTray
 
             StartMetapandaApplicationProfiles();
 
+            StartMetapandaStateRefresh();
+
             StartPeriodicUpdateCheck();
 
             StartWakeupEventListener();

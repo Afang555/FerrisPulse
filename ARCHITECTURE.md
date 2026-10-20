@@ -15,7 +15,7 @@ D:\github\mouse\
 ├── AGENT_RULES.md              [AI 行为准则与高分屏规范]
 └── src\
     ├── Properties\             [程序集版本信息与 PE 元数据]
-    │   └── AssemblyInfo.cs     [Windows PE 元数据、版本号 2.1.2.0、版权与产品信息]
+    │   └── AssemblyInfo.cs     [Windows PE 元数据、版本号 2.1.3.0、版权与产品信息]
     │
     ├── Core\                   [系统核心中枢]
     │   ├── Program.cs          [应用入口、全局 Mutex 防多开、目录重置、异常兜底]
@@ -46,6 +46,8 @@ D:\github\mouse\
     │   └── XInputHelper.cs      [游戏手柄电量与状态检测]
     │
     ├── Services\               [后台长效服务层]
+    │   ├── DiagnosticLog.cs    [本地滚动事件日志/电量 CSV，原始参数与耗时，端点哈希，不自动上传]
+    │   ├── ActivityRefreshSchedule.cs [活动/可见 1 秒、空闲 5 秒、防快速查询重入]
     │   ├── GameDetector.cs     [独占全屏与焦点游戏检测服务，带系统白名单与防抖]
     │   └── ChimeSynthesizer.cs [44.1kHz 16-bit PCM 柔和纯音双音合成器]
     │
@@ -150,10 +152,15 @@ D:\github\mouse\
 | `src/Services/ApplicationMouseProfileService.cs` | 无硬件副作用的 XML 持久化和状态转换；可选 dpi 属性向后兼容旧 stage 规则。使用同目录临时文件和原子替换保存。调度用新读取结果解析 DPI 值和能力；未知值不猜测。首次进入前记录原始 X/Y DPI、档位和回报率；恢复时按当前档位表寻找原值，缺失则保留待恢复状态。 |
 | `src/UI/Forms/ApplicationMouseProfilesDialog.cs` | 模式、目标值、六档回报率、设备快照匹配状态和可编辑游戏800/4000、办公1600/125预设。预设只修改选中规则。无硬件写入，编辑期间暂停调度。 |
 | `src/UI/Forms/MainForm.Metapanda.cs` | 托盘入口、完整前台路径、500ms 调度/750ms 稳定判定、串行规则所有权、实际状态快照、应用和退出恢复。 |
+| `src/UI/Forms/MainForm.Metapanda.Refresh.cs` | 选定端点独立回读；活动/可见约 1 秒、空闲约 5 秒；一个快速查询在途，UI 线程发布并按时间戳排除旧状态。 |
+| `src/Services/ActivityRefreshSchedule.cs` | 单调时间调度与并发保护；失败回调释放占用，避免窗口句柄变化后停刷。 |
+| `src/Services/DiagnosticLog.cs` | 本机最多约 10 MiB 的事件与电量 CSV；重复采样、电压/等级/估算值、设置结果和耗时，端点哈希与安全 I/O 失败。 |
 | `src/UI/Forms/MainForm.Hardware.cs` / `MainForm.UI.cs` | 主界面和游戏模式按端点能力显示回报率，F5AC 保留全部六档按钮。应用规则优先于旧游戏自动设置。 |
 | `src/Hardware/DeviceManager.cs` / `VgnDeviceHelper.cs` / `UniversalGamingDeviceHelper.cs` | 独立扫描并排除已知玄熊猫路径，保留完整端点身份，避免共享 VID 导致重复归类或跨设备命令。 |
 
 规则保存于 `%LocalAppData%\FerrisPulse\application-profiles.xml`。exe 完整路径比较忽略大小写，端点 ID 使用精确匹配。不存在端点时不回退到其他同型号设备；换电脑、换有线/无线端点后需重新选择。
+
+电量命令 04 的字节 6 为设备等级读数，字节 7 为充电标记，字节 8/9 是大端毫伏值。P1 非充电时按已核实的官方 21 点电压曲线插值，界面取整数部分；`ExactBatteryPercent` 保存估算小数，不代表真实荷电量精度。充电或电压为零时沿用设备等级；非零电压超出 2500～4500 mV 时保留未知。该标定只归本适配器，禁止推广到其他鼠标。详见 [电量缺陷 R6](docs/metapanda-regressions.md)。
 
 回调必须同时确认 DPI 档位和回报率，失败清除成功缓存并重试。UI 写入与规则所有权串行化，排队回调重新检查所有权。规则切换沿用进入前快照，正常退出尝试恢复；断连或强制结束无法保证恢复。前台路径查询失败不视为规则退出。
 
@@ -161,6 +168,10 @@ D:\github\mouse\
 ### Metapanda 即时界面反馈
 
 MainForm.Metapanda.Feedback.cs 维护UI线程上的确认快照。PublishMetapandaConfirmedState 接收设置后实际回读的数据，保留名称/主设备/优先级，统一更新当前设备、列表、托盘与性能界面；ReconcileMetapandaSnapshots 用 LastUpdated 排除更旧的扫描和迟到回调，允许更新的物理状态继续生效。设备设置新增 out MouseBatteryInfo confirmed 重载，旧bool签名保持兼容，所有权包装仍持锁直到写入和回读结束。
+
+`PublishMetapandaObservedState` 用于快速状态观察，只有有效 DPI 发生变化才触发 OSD；正常电量更新不弹 DPI 提示。`QueryDevice(deviceId, reason)` 为日志保留读取来源，单参入口仍可用。快速读只针对选定完整端点，RawInput 按 VID/PID 匹配仅用于加速该端点读取；多只相同 PID 的活动精确区分尚未实机验证。
+
+回报率快捷列表经 `ResolveMetapandaPollingShortcuts` 将保存值与真实能力相交、去重排序，默认 125/1000/4000；六档能力不等于每次必须展示全部。管理窗口可保留六档，不在刷新时重置为能力表，也不因修改快捷项向硬件写入。
 
 ReadState 先读取前20字节，根据实际档位数量再读取剩余数据，最多44字节；不再对两档设备读取全部未使用内容。六档按钮统一采用完整数字及Hz，基础窗口宽度600逻辑像素。test_metapanda_feedback.ps1 覆盖完整同步、旧扫描/迟到回调隔离和新物理状态更新。
 

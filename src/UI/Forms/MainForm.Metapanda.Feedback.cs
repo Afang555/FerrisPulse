@@ -64,11 +64,20 @@ namespace RazerBatteryTray
                 UpdateUI(state, false); UpdateDeviceTabsUI(); UpdatePrimaryPinButton(state);
             }
             UpdateStatusDisplay();
+            DiagnosticLog.Default.Write("ui-confirmed", "device=" + DiagnosticLog.DeviceKey(state.DeviceId) + " battery=" + state.BatteryPercent + " dpi=" + state.Dpi + " stage=" + state.DpiStage + " polling_hz=" + state.PollingRate);
             return true;
         }
         private void PublishMetapandaManualDpiState(MouseBatteryInfo state)
         {
             if (PublishMetapandaConfirmedState(state))
+                OnDpiChanged("Metapanda", state.Dpi, state.DpiStage, state.DpiStageCount, state.DeviceId);
+        }
+        private void PublishMetapandaObservedState(MouseBatteryInfo state)
+        {
+            if (state == null || selectedDevice == null || state.DeviceId != selectedDevice.DeviceId) return;
+            int oldStage = selectedDevice.DpiStage, oldDpi = selectedDevice.Dpi;
+            if (PublishMetapandaConfirmedState(state) && oldStage > 0 && state.DpiStage > 0 && state.Dpi > 0 &&
+                (oldStage != state.DpiStage || oldDpi != state.Dpi))
                 OnDpiChanged("Metapanda", state.Dpi, state.DpiStage, state.DpiStageCount, state.DeviceId);
         }
         private void ReconcileMetapandaSnapshots(List<MouseBatteryInfo> devices)

@@ -29,6 +29,7 @@ namespace RazerBatteryTray
         private List<int> allAvailableRates = new List<int>();
         private List<int> chosenRates = new List<int>();
         private int currentActiveRate;
+        private int maxShortcutCount;
 
         private Panel pnlPresetBar;
         private Panel pnlRateList;
@@ -48,8 +49,13 @@ namespace RazerBatteryTray
         }
 
         public PollingRateManagementDialog(string devName, int[] availableRates, int[] currentShortcutRates, int activeRate, float scale = 1.0f)
+            : this(devName, availableRates, currentShortcutRates, activeRate, scale, 5)
+        { }
+
+        public PollingRateManagementDialog(string devName, int[] availableRates, int[] currentShortcutRates, int activeRate, float scale, int maxShortcuts)
             : base(scale)
         {
+            this.maxShortcutCount = Math.Max(1, Math.Min(8, maxShortcuts));
             this.deviceName = !string.IsNullOrEmpty(devName) ? devName : "鼠标外设";
             this.currentActiveRate = activeRate > 0 ? activeRate : 1000;
             this.ActiveRate = this.currentActiveRate;
@@ -95,10 +101,10 @@ namespace RazerBatteryTray
                     chosenRates = new List<int>(allAvailableRates);
                 }
             }
-            else if (chosenRates.Count > 5)
+            else if (chosenRates.Count > maxShortcutCount)
             {
                 chosenRates.Sort();
-                while (chosenRates.Count > 5)
+                while (chosenRates.Count > maxShortcutCount)
                 {
                     chosenRates.RemoveAt(0);
                 }
@@ -161,7 +167,7 @@ namespace RazerBatteryTray
 
             // 2. Subtitle Note
             Label lblSub = new Label();
-            lblSub.Text = "选择需要在主面板快捷切换的回报率档位 (最多勾选 5 档)";
+            lblSub.Text = "选择需要在主面板快捷切换的回报率档位 (最多勾选 " + maxShortcutCount + " 档)";
             lblSub.Font = new Font("Microsoft YaHei UI", 8.2F, FontStyle.Regular);
             lblSub.ForeColor = Color.FromArgb(120, 135, 155);
             lblSub.Location = new Point(pad, S(36));
@@ -189,12 +195,14 @@ namespace RazerBatteryTray
             this.Controls.Add(pnlPresetBar);
 
             int btnW = (pnlPresetBar.Width - S(16)) / 3;
-            var btnPresetStandard = CreatePresetButton("常规 4 档 (125~1000 Hz)", S(4), btnW, new int[] { 125, 250, 500, 1000 });
-            var btnPresetHigh = CreatePresetButton("电竞 4 档 (1000~8000 Hz)", S(4) + btnW + S(4), btnW, new int[] { 1000, 2000, 4000, 8000 });
+            var btnPresetStandard = maxShortcutCount > 5
+                ? CreatePresetButton("常用 3 档", S(4), btnW, new int[] { 125, 1000, 4000 })
+                : CreatePresetButton("常规 4 档 (125~1000 Hz)", S(4), btnW, new int[] { 125, 250, 500, 1000 });
+            var btnPresetHigh = CreatePresetButton("电竞档位", S(4) + btnW + S(4), btnW, new int[] { 1000, 2000, 4000, 8000 });
 
             int[] preset5Rates;
             string preset5Text;
-            if (allAvailableRates.Count <= 5)
+            if (allAvailableRates.Count <= maxShortcutCount)
             {
                 preset5Rates = allAvailableRates.ToArray();
                 preset5Text = "全档位启用";
@@ -422,9 +430,9 @@ namespace RazerBatteryTray
                 return;
             }
 
-            if (selected.Count > 5)
+            if (selected.Count > maxShortcutCount)
             {
-                lblError.Text = "主面板快捷切换最多支持勾选 5 个回报率档位！";
+                lblError.Text = "主面板快捷切换最多支持勾选 " + maxShortcutCount + " 个回报率档位！";
                 return;
             }
 

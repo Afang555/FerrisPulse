@@ -82,6 +82,8 @@ namespace RazerBatteryTray
 
         private void EnableMouseWakeDetector(bool enable)
         {
+            if (!enable && metapandaStateTimer != null && metapandaStateTimer.Enabled &&
+                !metapandaProfilesStopping && MetapandaDeviceHelper.IsMetapanda(selectedDevice)) enable = true;
             try
             {
                 RAWINPUTDEVICE[] rid = new RAWINPUTDEVICE[1];
@@ -125,6 +127,13 @@ namespace RazerBatteryTray
             string brand = targetMouse.Brand ?? "";
             string devId = targetMouse.DeviceId ?? "";
 
+            if (MetapandaDeviceHelper.IsMetapanda(targetMouse))
+            {
+                int pidStart = devId.IndexOf("pid_", StringComparison.OrdinalIgnoreCase);
+                // Input from this PID accelerates only a read of the explicitly selected endpoint.
+                return pidStart >= 0 && path.IndexOf("vid_3554&" + devId.Substring(pidStart, 8), StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+
             if (brand.Equals("Razer", StringComparison.OrdinalIgnoreCase) || devId.IndexOf("1532", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 if (path.IndexOf("VID_1532", StringComparison.OrdinalIgnoreCase) >= 0) return true;
@@ -161,8 +170,9 @@ namespace RazerBatteryTray
         {
             try
             {
-                var cur = lastInfo;
-                if (cur == null || !cur.IsConnected || !cur.IsSleeping) return;
+                var cur = MetapandaDeviceHelper.IsMetapanda(selectedDevice) ? selectedDevice : lastInfo;
+                bool metapanda = MetapandaDeviceHelper.IsMetapanda(cur);
+                if (cur == null || (!metapanda && (!cur.IsConnected || !cur.IsSleeping))) return;
 
                 int headerSize = Marshal.SizeOf(typeof(RAWINPUTHEADER));
                 RAWINPUTHEADER header;
@@ -202,6 +212,11 @@ namespace RazerBatteryTray
 
                         if (isMatch)
                         {
+                            if (metapanda)
+                            {
+                                metapandaLastMouseInput = metapandaRefreshClock.ElapsedMilliseconds;
+                                return; // No HID traffic or disk I/O for individual 4000 Hz input packets.
+                            }
                             cur.IsSleeping = false;
                             isMouseSleeping = false;
                             EnableMouseWakeDetector(false);

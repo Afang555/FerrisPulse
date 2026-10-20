@@ -1,10 +1,17 @@
 ﻿// ⚠️ AI 维护准则 (AI MAINTENANCE DIRECTIVE - DO NOT REMOVE) ⚠️
-// Captured Metapanda Report 08 codec. C# 5 / .NET 4; never synthesizes unknown state.
+// Captured Metapanda Report 08 codec, including the verified P1 discharge-voltage curve.
+// C# 5 / .NET 4; charging/legacy readings retain device percentage, invalid data stays unknown.
 using System;
 namespace RazerBatteryTray
 {
     public static class MetapandaProtocol
     {
+        // P1 official 1.0.0.4 calibration: 0..100 percent in five-percent steps (millivolts).
+        // Calibration data is scoped to this adapter, not a universal Li-ion percentage formula.
+        private static readonly int[] BatteryVoltagePoints = new int[] {
+            3050, 3420, 3480, 3540, 3600, 3660, 3720, 3760, 3800, 3840, 3880,
+            3920, 3940, 3960, 3980, 4000, 4020, 4040, 4060, 4080, 4110
+        };
         public static byte[] BuildCommand(byte command)
         {
             byte[] report = new byte[17]; report[0] = 8; report[1] = command; Finish(report); return report;
@@ -60,9 +67,32 @@ namespace RazerBatteryTray
         }
         public static bool DecodeBattery(byte[] response, out int percent, out bool charging)
         {
-            percent = -1; charging = false;
+            double estimate;
+            return DecodeBattery(response, out percent, out charging, out estimate);
+        }
+        public static bool DecodeBattery(byte[] response, out int percent, out bool charging, out double estimate)
+        {
+            percent = -1; charging = false; estimate = -1;
             if (!IsValid(response) || response[1] != 4 || response[5] != 2 || response[6] > 100 || response[7] > 1) return false;
-            percent = response[6]; charging = response[7] == 1; return true;
+            int millivolts = response[8] * 256 + response[9];
+            if (millivolts != 0 && (millivolts < 2500 || millivolts > 4500)) return false;
+            charging = response[7] == 1;
+            // Charge voltage includes charging effects; do not turn it into an instant full battery.
+            estimate = millivolts == 0 || charging ? response[6] : EstimateDischargePercent(millivolts);
+            percent = (int)estimate;
+            return true;
+        }
+        private static double EstimateDischargePercent(int millivolts)
+        {
+            if (millivolts <= BatteryVoltagePoints[0]) return 0;
+            if (millivolts >= BatteryVoltagePoints[BatteryVoltagePoints.Length - 1]) return 100;
+            for (int upper = 1; upper < BatteryVoltagePoints.Length; upper++)
+            {
+                if (millivolts > BatteryVoltagePoints[upper]) continue;
+                int low = BatteryVoltagePoints[upper - 1];
+                return (upper - 1) * 5 + (millivolts - low) * 5.0 / (BatteryVoltagePoints[upper] - low);
+            }
+            return 100;
         }
         private static bool ValidBlock(byte[] memory, int offset, int count)
         {

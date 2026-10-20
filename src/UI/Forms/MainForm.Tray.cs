@@ -81,6 +81,11 @@ namespace RazerBatteryTray
             refreshItem = new ToolStripMenuItem("立即刷新电量", null, (s, e) => RefreshBatteryStatus(true));
             contextMenu.Items.Add(refreshItem);
 
+            contextMenu.Items.Add(new ToolStripMenuItem("打开诊断日志文件夹", null, (s, e) => {
+                try { Directory.CreateDirectory(DiagnosticLog.Default.DirectoryPath); Process.Start("explorer.exe", "\"" + DiagnosticLog.Default.DirectoryPath + "\""); }
+                catch (Exception ex) { MessageBox.Show(this, "日志目录无法打开：" + ex.Message, "诊断日志"); }
+            }));
+
             // Submenu: DPI 调节
             dpiMenu = new ToolStripMenuItem("调节 DPI 档位");
             ConfigureSubMenuDropDown(dpiMenu.DropDown);

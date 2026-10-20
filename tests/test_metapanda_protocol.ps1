@@ -1,4 +1,5 @@
-﻿# Regression: captured reports, malformed responses and endpoint isolation.
+﻿# ⚠️ AI 维护准则 (AI MAINTENANCE DIRECTIVE - DO NOT REMOVE) ⚠️
+# Regression: captured reports, malformed responses and endpoint isolation.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 if (-not (Test-Path "$root/src/Hardware/MetapandaProtocol.cs")) { throw 'FAIL: Metapanda codec is missing' }
@@ -64,7 +65,7 @@ class MetapandaTests {
 $runnerPath = Join-Path $scratch 'metapanda-test-runner.cs'
 [IO.File]::WriteAllText($runnerPath, $runner, (New-Object Text.UTF8Encoding($true)))
 $out = Join-Path $scratch 'metapanda-test-runner.exe'
-$sources = @('src/Hardware/MetapandaProtocol.cs','src/Hardware/MetapandaDeviceHelper.cs','src/Hardware/RazerDeviceHelper.cs','src/Models/MouseBatteryInfo.cs','src/Models/DeviceCategory.cs','src/Models/RazerDeviceHardwareState.cs') | ForEach-Object { Join-Path $root $_ }
+$sources = @('src/Services/DiagnosticLog.cs','src/Hardware/MetapandaProtocol.cs','src/Hardware/MetapandaDeviceHelper.cs','src/Hardware/RazerDeviceHelper.cs','src/Models/MouseBatteryInfo.cs','src/Models/DeviceCategory.cs','src/Models/RazerDeviceHardwareState.cs') | ForEach-Object { Join-Path $root $_ }
 & 'C:/Windows/Microsoft.NET/Framework64/v4.0.30319/csc.exe' /nologo /langversion:5 /codepage:65001 /target:exe /main:MetapandaTests /r:System.Drawing.dll /r:System.Windows.Forms.dll "/out:$out" $sources $runnerPath
 if ($LASTEXITCODE -ne 0) { throw 'Metapanda test compilation failed' }
 & $out

@@ -2099,22 +2099,24 @@ namespace RazerBatteryTray
                 : supported;
 
             int curHz = curDev.PollingRate > 0 ? curDev.PollingRate : 1000;
-            using (var dlg = new PollingRateManagementDialog(devName, supported, activeSelected, curHz, dpiScale))
+            int maxShortcuts = MetapandaDeviceHelper.IsMetapanda(curDev) ? supported.Length : 5;
+            using (var dlg = new PollingRateManagementDialog(devName, supported, activeSelected, curHz, dpiScale, maxShortcuts))
             {
                 if (dlg.ShowDialog(this) == DialogResult.OK)
                 {
                     int[] newSelected = dlg.SelectedRates;
                     if (newSelected != null && newSelected.Length > 0)
                     {
-                        if (newSelected.Length > 5)
+                        if (newSelected.Length > maxShortcuts)
                         {
                             List<int> clamp5 = new List<int>(newSelected);
                             clamp5.Sort();
-                            while (clamp5.Count > 5) clamp5.RemoveAt(0);
+                            while (clamp5.Count > maxShortcuts) clamp5.RemoveAt(0);
                             newSelected = clamp5.ToArray();
                         }
                         pollingRateValues = newSelected;
                         SaveCustomPollingRates(curDev.DeviceId, newSelected);
+                        DiagnosticLog.Default.Write("rate-shortcuts", "device=" + DiagnosticLog.DeviceKey(curDev.DeviceId) + " hz=" + string.Join(",", Array.ConvertAll(newSelected, v => v.ToString())));
 
                         // 档位变更后电竞回报率同步联动：若当前电竞回报率不在新档位列表中，自动吸附到最高档
                         if (Array.IndexOf(newSelected, gamePollingRate) == -1)
@@ -2194,6 +2196,19 @@ namespace RazerBatteryTray
         }
 
         private int[] LoadCustomPollingRates(string devId, int[] fallbackRates)
+        { return LoadCustomPollingRates(devId, fallbackRates, 5); }
+
+        private int[] ResolveMetapandaPollingShortcuts(MouseBatteryInfo info, int[] supported)
+        {
+            int[] wanted = LoadCustomPollingRates(info.DeviceId, new int[] { 125, 1000, 4000 }, 8);
+            List<int> result = new List<int>();
+            foreach (int rate in wanted)
+                if (Array.IndexOf(supported, rate) >= 0 && !result.Contains(rate)) result.Add(rate);
+            if (result.Count == 0) result.AddRange(supported);
+            result.Sort(); return result.ToArray();
+        }
+
+        private int[] LoadCustomPollingRates(string devId, int[] fallbackRates, int maxCount)
         {
             try
             {
@@ -2219,7 +2234,7 @@ namespace RazerBatteryTray
                             if (list.Count > 0)
                             {
                                 list.Sort();
-                                while (list.Count > 5)
+                                while (list.Count > maxCount)
                                 {
                                     list.RemoveAt(0); // 最多 5 档快捷显示，裁剪超额低档位
                                 }

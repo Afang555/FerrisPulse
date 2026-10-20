@@ -1575,6 +1575,7 @@ namespace RazerBatteryTray
         private void RefreshBatteryStatus(bool showTipIfManual)
         {
             if (PauseBackgroundRefresh) return;
+            DiagnosticLog.Default.Write("refresh-request", showTipIfManual ? "manual" : "timer-or-device-event");
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 try
@@ -1984,6 +1985,10 @@ namespace RazerBatteryTray
             bool isLogitechMouse = (isLogitech && info.Category == DeviceCategory.Mouse);
             bool isRapooMouse = (isRapoo && info.Category == DeviceCategory.Mouse);
             bool isMetapandaMouse = MetapandaDeviceHelper.IsMetapanda(info) && info.Category == DeviceCategory.Mouse;
+            if (lblIntervalTitle != null) lblIntervalTitle.Text = isMetapandaMouse ? "全设备扫描频率" : "自动刷新频率";
+            if (lblSettingsTip != null) lblSettingsTip.Text = isMetapandaMouse
+                ? "玄熊猫：窗口打开/鼠标活动约1秒，托盘空闲约5秒；设置后立即回读"
+                : "注：切换线缆/接收器或按键调 DPI 时将自动即时同步，无需等待计时周期";
 
             int secW = cardPerformance.ClientSize.Width - (int)(32 * dpiScale);
 
@@ -2564,7 +2569,7 @@ namespace RazerBatteryTray
                     : (info.MaxPollingRate == 1000 ? new int[] { 125, 250, 500, 1000 } : new int[] { 125, 250, 500, 1000, 2000, 4000, 8000 });
 
                 int[] defaultActive = GetDefaultActivePollingRates(baseSupported);
-                pollingRateValues = isMetapandaMouse ? baseSupported : LoadCustomPollingRates(info.DeviceId, defaultActive);
+                pollingRateValues = isMetapandaMouse ? ResolveMetapandaPollingShortcuts(info, baseSupported) : LoadCustomPollingRates(info.DeviceId, defaultActive);
 
                 if (!isMetapandaMouse && info.PollingRate > 0 && Array.IndexOf(pollingRateValues, info.PollingRate) == -1)
                 {

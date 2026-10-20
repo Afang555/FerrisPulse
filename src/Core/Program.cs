@@ -42,6 +42,7 @@ namespace RazerBatteryTray
             }
             catch { }
 
+            DiagnosticLog.Default.Write("startup", "version=" + Application.ProductVersion);
             // 1.1 静默清理自更新残留的旧版本备份 (.old)
             try
             {
@@ -70,11 +71,13 @@ namespace RazerBatteryTray
             // 4. 全局未捕获异常安全兜底
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
             Application.ThreadException += (s, e) => {
+                DiagnosticLog.Default.Write("ui-exception", e.Exception == null ? "unknown" : e.Exception.GetType().FullName + " " + e.Exception.Message);
                 string msg = e.Exception != null ? (e.Exception.Message + "\n\n" + e.Exception.StackTrace) : "未知线程异常";
                 MessageBox.Show("程序发生异常: " + msg, "FerrisPulse · 灵脉 - 错误提示", MessageBoxButtons.OK, MessageBoxIcon.Error);
             };
             AppDomain.CurrentDomain.UnhandledException += (s, e) => {
                 Exception ex = e.ExceptionObject as Exception;
+                DiagnosticLog.Default.Write("fatal-exception", ex == null ? "unknown" : ex.GetType().FullName + " " + ex.Message);
                 string msg = ex != null ? (ex.Message + "\n\n" + ex.StackTrace) : "未知系统错误";
                 MessageBox.Show("未处理的致命异常: " + msg, "FerrisPulse · 灵脉 - 致命错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
             };

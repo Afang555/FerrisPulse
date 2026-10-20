@@ -1,5 +1,6 @@
 ﻿// ⚠️ AI 维护准则 (AI MAINTENANCE DIRECTIVE - DO NOT REMOVE) ⚠️
 // Endpoint-isolated Metapanda HID discovery/transport. C# 5 / .NET 4, no dependencies.
+// Publish the verified discharge-voltage estimate rather than freezing on the coarse battery byte.
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -136,8 +137,9 @@ namespace RazerBatteryTray
             byte[] response = Exchange(handle, MetapandaProtocol.BuildCommand(3), endpoint.InputLength);
             return response != null && response[5] == 1 && response[6] == 1;
         }
-        private static MouseBatteryInfo ReadState(IntPtr handle, Endpoint endpoint)
+        private static MouseBatteryInfo ReadState(IntPtr handle, Endpoint endpoint, string reason)
         {
+            Stopwatch elapsed = Stopwatch.StartNew(); byte[] batteryReport = null;
             MouseBatteryInfo state = new MouseBatteryInfo();
             state.DeviceId = Prefix + endpoint.Path; state.Brand = "Metapanda"; state.Category = DeviceCategory.Mouse;
             state.DeviceName = string.IsNullOrEmpty(endpoint.Name) ? "玄熊猫鼠标" : endpoint.Name;
@@ -145,10 +147,12 @@ namespace RazerBatteryTray
             state.Transport = endpoint.Pid == 0xF5AB ? "USB" : "2.4G"; state.BatteryPercent = -1; state.ExactBatteryPercent = -1;
             state.SupportedPollingRates = endpoint.Pid == 0xF5AC ? new int[] { 125, 250, 500, 1000, 2000, 4000 } : new int[] { 125, 1000 }; state.MaxPollingRate = endpoint.Pid == 0xF5AC ? 4000 : 1000;
             state.IsDonglePresent = true; state.LastUpdated = DateTime.Now;
-            state.IsConnected = Online(handle, endpoint); if (!state.IsConnected) return state;
-            int battery; bool charging;
-            if (MetapandaProtocol.DecodeBattery(Exchange(handle, MetapandaProtocol.BuildCommand(4), endpoint.InputLength), out battery, out charging))
-            { state.BatteryPercent = battery; state.ExactBatteryPercent = battery; state.IsCharging = charging; }
+            state.IsConnected = Online(handle, endpoint);
+            if (!state.IsConnected) { DiagnosticLog.Default.RecordBattery(state, null, reason, elapsed.ElapsedMilliseconds); return state; }
+            int battery; bool charging; double estimate;
+            batteryReport = Exchange(handle, MetapandaProtocol.BuildCommand(4), endpoint.InputLength);
+            if (MetapandaProtocol.DecodeBattery(batteryReport, out battery, out charging, out estimate))
+            { state.BatteryPercent = battery; state.ExactBatteryPercent = estimate; state.IsCharging = charging; }
             byte[] memory = new byte[44]; bool complete = true; int required = 20;
             for (int address = 0; address < required; address += 10)
             {
@@ -158,6 +162,7 @@ namespace RazerBatteryTray
             }
             if (complete) MetapandaProtocol.DecodeSettings(memory, state);
             state.LastUpdated = DateTime.Now;
+            DiagnosticLog.Default.RecordBattery(state, batteryReport, reason, elapsed.ElapsedMilliseconds);
             return state;
         }
         public static List<MouseBatteryInfo> QueryDevices()
@@ -168,7 +173,7 @@ namespace RazerBatteryTray
                 lock (GetLock(endpoint.Path))
                 {
                     IntPtr handle = Open(endpoint.Path); if (!ValidHandle(handle)) continue;
-                    try { result.Add(ReadState(handle, endpoint)); } finally { RazerDeviceHelper.CloseHandle(handle); }
+                    try { result.Add(ReadState(handle, endpoint, "scan")); } finally { RazerDeviceHelper.CloseHandle(handle); }
                 }
             }
             return result;
@@ -181,12 +186,14 @@ namespace RazerBatteryTray
             return null;
         }
         public static MouseBatteryInfo QueryDevice(string deviceId)
+        { return QueryDevice(deviceId, "query"); }
+        public static MouseBatteryInfo QueryDevice(string deviceId, string reason)
         {
             Endpoint endpoint = Find(deviceId); if (endpoint == null) return null;
             lock (GetLock(endpoint.Path))
             {
                 IntPtr handle = Open(endpoint.Path); if (!ValidHandle(handle)) return null;
-                try { return ReadState(handle, endpoint); } finally { RazerDeviceHelper.CloseHandle(handle); }
+                try { return ReadState(handle, endpoint, reason); } finally { RazerDeviceHelper.CloseHandle(handle); }
             }
         }
         private static bool Set(string deviceId, int value, bool dpi, out MouseBatteryInfo confirmed)
@@ -200,12 +207,16 @@ namespace RazerBatteryTray
                 IntPtr handle = Open(endpoint.Path); if (!ValidHandle(handle)) return false;
                 try
                 {
-                    MouseBatteryInfo before = ReadState(handle, endpoint);
+                    DiagnosticLog.Default.Write("setting-request", "device=" + DiagnosticLog.DeviceKey(deviceId) + " kind=" + (dpi ? "stage" : "polling_hz") + " target=" + value);
+                    MouseBatteryInfo before = ReadState(handle, endpoint, "setting-before");
                     if (!before.IsConnected || (dpi && (before.DpiStageCount == 0 || value > before.DpiStageCount)) || (!dpi && (before.PollingRate == 0 || Array.IndexOf(before.SupportedPollingRates, value) < 0))) return false;
                     if ((dpi ? before.DpiStage : before.PollingRate) == value) { confirmed = before; return true; }
-                    if (Exchange(handle, command, endpoint.InputLength) == null) return false;
-                    MouseBatteryInfo after = ReadState(handle, endpoint);
-                    if (!after.IsConnected || (dpi ? after.DpiStage : after.PollingRate) != value) return false;
+                    if (Exchange(handle, command, endpoint.InputLength) == null)
+                    { DiagnosticLog.Default.Write("setting-result", "device=" + DiagnosticLog.DeviceKey(deviceId) + " result=no-matching-ack"); return false; }
+                    MouseBatteryInfo after = ReadState(handle, endpoint, "setting-after");
+                    if (!after.IsConnected || (dpi ? after.DpiStage : after.PollingRate) != value)
+                    { DiagnosticLog.Default.Write("setting-result", "device=" + DiagnosticLog.DeviceKey(deviceId) + " result=readback-mismatch"); return false; }
+                    DiagnosticLog.Default.Write("setting-result", "device=" + DiagnosticLog.DeviceKey(deviceId) + " result=confirmed");
                     confirmed = after; return true;
                 }
                 finally { RazerDeviceHelper.CloseHandle(handle); }

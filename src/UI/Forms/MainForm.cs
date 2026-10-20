@@ -904,6 +904,8 @@ namespace RazerBatteryTray
 
             StartGameMonitor();
 
+            StartMetapandaApplicationProfiles();
+
             StartPeriodicUpdateCheck();
 
             StartWakeupEventListener();
@@ -1473,6 +1475,8 @@ namespace RazerBatteryTray
         protected override void OnFormClosed(FormClosedEventArgs e)
 
         {
+
+            StopMetapandaApplicationProfiles();
 
             isWakeupListenerRunning = false;
 

@@ -132,6 +132,7 @@ namespace RazerBatteryTray
                 if (Brand == "NuPhy" || Category == DeviceCategory.Keyboard) return Color.FromArgb(0, 229, 255);
                 if (Brand == "Logitech" || Brand == "罗技") return Color.FromArgb(0, 174, 239);
                 if (Brand == "Rapoo" || Brand == "雷柏") return Color.FromArgb(0, 185, 255);
+                if (Brand == "Metapanda") return Color.FromArgb(255, 140, 40);
                 if (Brand == "VGN") return Color.FromArgb(255, 120, 0);
                 if (Brand == "Razer" || Brand == "雷蛇") return Color.FromArgb(0, 230, 118);
                 return Color.FromArgb(0, 230, 118);
@@ -204,6 +205,9 @@ namespace RazerBatteryTray
                     }
                     return target ?? "无线键盘";
                 }
+
+                if (Brand == "Metapanda")
+                    return string.IsNullOrEmpty(DeviceName) ? "玄熊猫鼠标" : DeviceName;
 
                 if (Brand == "VGN")
                 {

@@ -644,6 +644,17 @@ namespace RazerBatteryTray
             }
             catch { }
 
+            // Metapanda uses endpoint-specific IDs; keep identical units separate.
+            try
+            {
+                foreach (MouseBatteryInfo metapanda in MetapandaDeviceHelper.QueryDevices())
+                {
+                    metapanda.IsCustom = false;
+                    list.Add(metapanda);
+                }
+            }
+            catch { }
+
             // 2.5 Query VGN
             try
             {

@@ -66,7 +66,7 @@ namespace RazerBatteryTray
                             }
                         }
                     }
-                    if (rzTargets.Count == 0 && (selectedDevice == null || selectedDevice.Category == DeviceCategory.Mouse))
+                    if (rzTargets.Count == 0 && !MetapandaDeviceHelper.IsMetapanda(selectedDevice) && (selectedDevice == null || selectedDevice.Category == DeviceCategory.Mouse))
                     {
                         rzTargets.Add(null); // 回退至默认主鼠标设备
                     }
@@ -408,9 +408,65 @@ namespace RazerBatteryTray
             }
         }
 
+        // Metapanda captures confirm stage switching only; never rewrite its DPI table.
+        private bool TrySetMetapandaDpiStage(MouseBatteryInfo curDev, int targetStage, bool updateGamePreset = false)
+        {
+            if (!MetapandaDeviceHelper.IsMetapanda(curDev) || curDev.DpiStages == null ||
+                targetStage < 1 || targetStage > curDev.DpiStages.Length) return false;
+            int dpi = curDev.DpiStages[targetStage - 1];
+            if (!SetUnownedMetapandaDpiStage(curDev.DeviceId, targetStage)) return false;
+            this.BeginInvoke(new Action(() => {
+                if (HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
+                curDev.DpiStage = targetStage;
+                curDev.Dpi = dpi;
+                curDev.DpiY = dpi;
+                if (lastInfo != null && lastInfo.DeviceId == curDev.DeviceId)
+                {
+                    lastInfo.DpiStage = targetStage;
+                    lastInfo.Dpi = dpi;
+                    lastInfo.DpiY = dpi;
+                }
+                if (selectedDevice == null || selectedDevice.DeviceId != curDev.DeviceId) return;
+                if (updateGamePreset && isGamingActive && autoGameDpiEnabled)
+                {
+                    gameDpiStage = targetStage;
+                    SaveConfig();
+                }
+                HighlightDpiStage(targetStage);
+                UpdateStatusDisplay();
+                UpdatePollingRateDisplayStates();
+            }));
+            return true;
+        }
+
+        private void SetMetapandaPollingRateFromUI(MouseBatteryInfo curDev, int hz)
+        {
+            if (hz != 125 && hz != 1000) return;
+            new Thread(() => {
+                if (!SetUnownedMetapandaPollingRate(curDev.DeviceId, hz)) return;
+                this.BeginInvoke(new Action(() => {
+                    if (HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
+                    curDev.PollingRate = hz;
+                    if (lastInfo != null && lastInfo.DeviceId == curDev.DeviceId) lastInfo.PollingRate = hz;
+                    if (selectedDevice == null || selectedDevice.DeviceId != curDev.DeviceId) return;
+                    desktopPollingRate = hz;
+                    SaveConfig();
+                    UpdateDesktopRateButtonSelection(hz);
+                    UpdatePollingRateDisplayStates();
+                    UpdateStatusDisplay();
+                }));
+            }) { IsBackground = true }.Start();
+        }
+
         public void SetDpiFromUI(int dpi)
         {
             var curDev = selectedDevice;
+            if (MetapandaDeviceHelper.IsMetapanda(curDev))
+            {
+                int index = curDev.DpiStages != null ? Array.IndexOf(curDev.DpiStages, dpi) : -1;
+                if (index >= 0) new Thread(() => { TrySetMetapandaDpiStage(curDev, index + 1, true); }) { IsBackground = true }.Start();
+                return;
+            }
             new Thread(() => {
                 int targetStage = -1;
                 for (int i = 0; i < dpiStageValues.Length; i++)
@@ -560,10 +616,15 @@ namespace RazerBatteryTray
 
         public void SetPollingRateFromUI(int hz)
         {
+            var curDev = selectedDevice;
+            if (MetapandaDeviceHelper.IsMetapanda(curDev))
+            {
+                SetMetapandaPollingRateFromUI(curDev, hz);
+                return;
+            }
             desktopPollingRate = hz;
             SaveConfig();
 
-            var curDev = selectedDevice;
             new Thread(() => {
                 bool ok = false;
                 if (!isGamingActive)
@@ -610,6 +671,7 @@ namespace RazerBatteryTray
 
         public void SetGamePollingRateFromUI(int hz)
         {
+            if (MetapandaDeviceHelper.IsMetapanda(selectedDevice) && hz != 125 && hz != 1000) return;
             gamePollingRate = hz;
             UpdateGameRateButtonSelection(hz);
             UpdatePollingRateDisplayStates();
@@ -623,6 +685,8 @@ namespace RazerBatteryTray
 
         public void SetGameDpiStageFromUI(int stage)
         {
+            if (MetapandaDeviceHelper.IsMetapanda(selectedDevice) &&
+                (selectedDevice.DpiStages == null || stage < 1 || stage > selectedDevice.DpiStages.Length)) return;
             if (stage < 1 || stage > 5) stage = 1;
             gameDpiStage = stage;
             UpdateGameDpiButtonSelection(stage);
@@ -818,7 +882,8 @@ namespace RazerBatteryTray
                 if (!autoGameRateEnabled && !autoGameDpiEnabled) return;
                 var curDev = selectedDevice;
                 if (curDev == null) return;
-                if (curDev.Brand != "Razer" && curDev.Brand != "Valkyrie" && curDev.Brand != "Logitech" && curDev.Brand != "罗技" && curDev.Brand != "Rapoo") return;
+                if (MetapandaDeviceHelper.IsMetapanda(curDev) && HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
+                if (!MetapandaDeviceHelper.IsMetapanda(curDev) && curDev.Brand != "Razer" && curDev.Brand != "Valkyrie" && curDev.Brand != "Logitech" && curDev.Brand != "罗技" && curDev.Brand != "Rapoo") return;
 
                 string procTitle = "";
                 bool isGame = false;
@@ -866,6 +931,11 @@ namespace RazerBatteryTray
                     if (inGameTickCount >= 2 && !isGamingActive)
                     {
                         isGamingActive = true;
+                        if (MetapandaDeviceHelper.IsMetapanda(curDev))
+                        {
+                            BeginMetapandaGameTransition(curDev);
+                            return;
+                        }
                         if (autoGameRateEnabled)
                         {
                             ApplyGamePollingRate();
@@ -901,6 +971,7 @@ namespace RazerBatteryTray
         {
             var curDev = selectedDevice;
             if (curDev == null) return;
+            if (MetapandaDeviceHelper.IsMetapanda(curDev) && HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
             int targetHz = gamePollingRate;
             string brand = curDev.Brand;
 
@@ -908,7 +979,8 @@ namespace RazerBatteryTray
                 bool ok = false;
                 for (int attempt = 0; attempt < 3; attempt++)
                 {
-                    if (brand == "Valkyrie" || brand == "瓦尔基里") ok = ValkyrieDeviceHelper.SetValkyriePollingRate(targetHz);
+                    if (MetapandaDeviceHelper.IsMetapanda(curDev)) ok = SetUnownedMetapandaPollingRate(curDev.DeviceId, targetHz);
+                    else if (brand == "Valkyrie" || brand == "瓦尔基里") ok = ValkyrieDeviceHelper.SetValkyriePollingRate(targetHz);
                     else if (brand == "Logitech" || brand == "罗技") ok = LogitechDeviceHelper.SetLogitechPollingRate(targetHz, curDev.DeviceId);
                     else if (brand == "Rapoo" || brand == "雷柏") ok = RapooDeviceHelper.SetRapooPollingRate(targetHz);
                     else if (brand == "Razer" || brand == "雷蛇" || (curDev.DeviceId != null && curDev.DeviceId.StartsWith("Razer:1532:"))) ok = RazerDeviceHelper.SetRazerPollingRate(targetHz, curDev.DeviceId);
@@ -920,6 +992,7 @@ namespace RazerBatteryTray
                 if (ok)
                 {
                     this.BeginInvoke(new Action(() => {
+                        if (MetapandaDeviceHelper.IsMetapanda(curDev) && HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
                         curDev.PollingRate = targetHz;
                         if (lastInfo != null && lastInfo.DeviceId == curDev.DeviceId) lastInfo.PollingRate = targetHz;
 
@@ -928,7 +1001,7 @@ namespace RazerBatteryTray
 
                         if (gameRateNotifyOsd && osdForm != null)
                         {
-                            if (autoGameDpiEnabled)
+                            if (autoGameDpiEnabled && !MetapandaDeviceHelper.IsMetapanda(curDev))
                             {
                                 int gameDpiVal = (dpiStageValues != null && gameDpiStage - 1 < dpiStageValues.Length) ? dpiStageValues[gameDpiStage - 1] : 800;
                                 osdForm.ShowRate(targetHz, string.Format("电竞加速 · 第{0}档 ({1} DPI)", gameDpiStage, gameDpiVal), brand);
@@ -941,7 +1014,7 @@ namespace RazerBatteryTray
 
                         if (gameRateNotifyToast)
                         {
-                            if (autoGameDpiEnabled)
+                            if (autoGameDpiEnabled && !MetapandaDeviceHelper.IsMetapanda(curDev))
                             {
                                 int gameDpiVal = (dpiStageValues != null && gameDpiStage - 1 < dpiStageValues.Length) ? dpiStageValues[gameDpiStage - 1] : 800;
                                 SafeShowBalloonTip(3000, "FerrisPulse · 电竞加速已激活",
@@ -969,6 +1042,7 @@ namespace RazerBatteryTray
         {
             var curDev = selectedDevice;
             if (curDev == null) return;
+            if (MetapandaDeviceHelper.IsMetapanda(curDev) && HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
             int targetHz = desktopPollingRate;
             string brand = curDev.Brand;
 
@@ -976,7 +1050,8 @@ namespace RazerBatteryTray
                 bool ok = false;
                 for (int attempt = 0; attempt < 3; attempt++)
                 {
-                    if (brand == "Valkyrie" || brand == "瓦尔基里") ok = ValkyrieDeviceHelper.SetValkyriePollingRate(targetHz);
+                    if (MetapandaDeviceHelper.IsMetapanda(curDev)) ok = SetUnownedMetapandaPollingRate(curDev.DeviceId, targetHz);
+                    else if (brand == "Valkyrie" || brand == "瓦尔基里") ok = ValkyrieDeviceHelper.SetValkyriePollingRate(targetHz);
                     else if (brand == "Logitech" || brand == "罗技") ok = LogitechDeviceHelper.SetLogitechPollingRate(targetHz, curDev.DeviceId);
                     else if (brand == "Rapoo" || brand == "雷柏") ok = RapooDeviceHelper.SetRapooPollingRate(targetHz);
                     else if (brand == "Razer" || brand == "雷蛇" || (curDev.DeviceId != null && curDev.DeviceId.StartsWith("Razer:1532:"))) ok = RazerDeviceHelper.SetRazerPollingRate(targetHz, curDev.DeviceId);
@@ -988,6 +1063,7 @@ namespace RazerBatteryTray
                 if (ok)
                 {
                     this.BeginInvoke(new Action(() => {
+                        if (MetapandaDeviceHelper.IsMetapanda(curDev) && HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
                         curDev.PollingRate = targetHz;
                         if (lastInfo != null && lastInfo.DeviceId == curDev.DeviceId) lastInfo.PollingRate = targetHz;
 
@@ -1035,6 +1111,15 @@ namespace RazerBatteryTray
         {
             var curDev = selectedDevice;
             if (curDev == null) return;
+            if (MetapandaDeviceHelper.IsMetapanda(curDev) && HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
+
+            if (MetapandaDeviceHelper.IsMetapanda(curDev))
+            {
+                int stage = gameDpiStage;
+                if (desktopDpiStage <= 0 && curDev.DpiStage > 0) desktopDpiStage = curDev.DpiStage;
+                new Thread(() => { TrySetMetapandaDpiStage(curDev, stage); }) { IsBackground = true }.Start();
+                return;
+            }
 
             // Remember current desktop stage if not already remembered
             if (desktopDpiStage <= 0)
@@ -1118,6 +1203,20 @@ namespace RazerBatteryTray
         {
             var curDev = selectedDevice;
             if (curDev == null || desktopDpiStage <= 0) return;
+            if (MetapandaDeviceHelper.IsMetapanda(curDev) && HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
+
+            if (MetapandaDeviceHelper.IsMetapanda(curDev))
+            {
+                int stage = desktopDpiStage;
+
+                new Thread(() => {
+                    if (TrySetMetapandaDpiStage(curDev, stage))
+                    {
+                        desktopDpiStage = 0;
+                    }
+                }) { IsBackground = true }.Start();
+                return;
+            }
 
             int targetStage = desktopDpiStage;
             if (targetStage < 1 || targetStage > 5) targetStage = 1;
@@ -1896,6 +1995,7 @@ namespace RazerBatteryTray
             bool isValkyrieMouse = ((info.Brand == "Valkyrie" || info.Brand == "瓦尔基里") && info.Category == DeviceCategory.Mouse);
             bool isLogitechMouse = (isLogitech && info.Category == DeviceCategory.Mouse);
             bool isRapooMouse = (isRapoo && info.Category == DeviceCategory.Mouse);
+            bool isMetapandaMouse = MetapandaDeviceHelper.IsMetapanda(info) && info.Category == DeviceCategory.Mouse;
 
             int secW = cardPerformance.ClientSize.Width - (int)(32 * dpiScale);
 
@@ -2373,7 +2473,7 @@ namespace RazerBatteryTray
                 if (dpiMenu != null) dpiMenu.Visible = false;
                 if (rateMenu != null) rateMenu.Visible = false;
             }
-            else if (isRazer || isValkyrieMouse || isLogitechMouse || isRapooMouse)
+            else if (isRazer || isValkyrieMouse || isLogitechMouse || isRapooMouse || isMetapandaMouse)
             {
                 if (lblPerfTitle != null)
                 {
@@ -2387,7 +2487,7 @@ namespace RazerBatteryTray
                 if (lblDpiTitle != null) lblDpiTitle.Visible = true;
                 if (lblRateTitle != null) lblRateTitle.Visible = true;
 
-                bool supportsAutoGameRate = (isRazer || isLogitechMouse || isRapooMouse || isValkyrieMouse);
+                bool supportsAutoGameRate = (isRazer || isLogitechMouse || isRapooMouse || isValkyrieMouse || isMetapandaMouse);
                 bool isOptExpanded = (autoGameRateEnabled || autoGameDpiEnabled);
                 int targetPerfH = (!supportsAutoGameRate || !isOptExpanded) ? (int)(148 * dpiScale) : (int)(255 * dpiScale);
                 AdjustPerformanceCardHeight(targetPerfH);
@@ -2426,6 +2526,11 @@ namespace RazerBatteryTray
                         dpiStageList = new List<int>(info.DpiStages);
                         dpiStageValues = info.DpiStages;
                     }
+                }
+                if (isMetapandaMouse && (info.DpiStages == null || info.DpiStages.Length == 0))
+                {
+                    dpiStageList = new List<int>();
+                    dpiStageValues = new int[0];
                 }
                 RelayoutDpiButtons();
 
@@ -2466,14 +2571,14 @@ namespace RazerBatteryTray
                     btnRateManage.ForeColor = Color.FromArgb(210, 220, 235);
                 }
 
-                int[] baseSupported = (info.SupportedPollingRates != null && info.SupportedPollingRates.Length > 0)
+                int[] baseSupported = isMetapandaMouse ? new int[] { 125, 1000 } : (info.SupportedPollingRates != null && info.SupportedPollingRates.Length > 0)
                     ? info.SupportedPollingRates
                     : (info.MaxPollingRate == 1000 ? new int[] { 125, 250, 500, 1000 } : new int[] { 125, 250, 500, 1000, 2000, 4000, 8000 });
 
                 int[] defaultActive = GetDefaultActivePollingRates(baseSupported);
-                pollingRateValues = LoadCustomPollingRates(info.DeviceId, defaultActive);
+                pollingRateValues = isMetapandaMouse ? baseSupported : LoadCustomPollingRates(info.DeviceId, defaultActive);
 
-                if (info.PollingRate > 0 && Array.IndexOf(pollingRateValues, info.PollingRate) == -1)
+                if (!isMetapandaMouse && info.PollingRate > 0 && Array.IndexOf(pollingRateValues, info.PollingRate) == -1)
                 {
                     List<int> list = new List<int>(pollingRateValues);
                     list.Add(info.PollingRate);
@@ -2534,6 +2639,7 @@ namespace RazerBatteryTray
 
                 if (dpiMenu != null && dpiStageValues != null)
                 {
+                    if (isMetapandaMouse) dpiMenu.Visible = dpiStageValues.Length > 0;
                     dpiMenu.Text = "调节 DPI 档位 (&D)";
                     dpiMenu.DropDownItems.Clear();
                     for (int i = 0; i < dpiStageValues.Length; i++)
@@ -2543,7 +2649,11 @@ namespace RazerBatteryTray
                         string itemText = (info.IsXyIndependent && valX != valY)
                             ? string.Format("档位 {0}: {1} × {2} DPI", i + 1, valX, valY)
                             : string.Format("{0} DPI", valX);
-                        var sub = new ToolStripMenuItem(itemText, null, (s, e) => SetDpiFromUI(valX));
+                        int stageIndex = i;
+                        var sub = new ToolStripMenuItem(itemText, null, (s, e) => {
+                            if (isMetapandaMouse) SwitchDpiStageByIndex(stageIndex);
+                            else SetDpiFromUI(valX);
+                        });
                         sub.Tag = valX;
                         sub.Checked = (valX == info.Dpi);
                         dpiMenu.DropDownItems.Add(sub);
@@ -2554,7 +2664,7 @@ namespace RazerBatteryTray
                 {
                     rateMenu.Text = "调节回报率 (&P)";
                     rateMenu.DropDownItems.Clear();
-                    int targetActive = isValkyrieMouse ? info.PollingRate : (autoGameRateEnabled ? (isGamingActive ? gamePollingRate : desktopPollingRate) : desktopPollingRate);
+                    int targetActive = (isValkyrieMouse || isMetapandaMouse) ? info.PollingRate : (autoGameRateEnabled ? (isGamingActive ? gamePollingRate : desktopPollingRate) : desktopPollingRate);
                     for (int i = 0; i < pollingRateValues.Length; i++)
                     {
                         int val = pollingRateValues[i];

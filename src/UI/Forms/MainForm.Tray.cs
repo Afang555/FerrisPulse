@@ -436,6 +436,8 @@ namespace RazerBatteryTray
             exitItem = new ToolStripMenuItem("退出程序", null, (s, e) => ExitApp());
             contextMenu.Items.Add(exitItem);
 
+            AddMetapandaApplicationProfilesMenu();
+
             foreach (ToolStripItem item in contextMenu.Items)
             {
                 item.Padding = new Padding(6, 4, 12, 4);

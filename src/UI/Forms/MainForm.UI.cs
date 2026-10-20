@@ -1102,9 +1102,9 @@ namespace RazerBatteryTray
             int gap = (int)(6 * dpiScale);
             int manageBtnW = segH;
 
-            int count = Math.Max(1, Math.Min(5, dpiStageList.Count));
+            int count = Math.Min(5, dpiStageList.Count);
             int remainingW = availableW - manageBtnW - gap;
-            int stageW = (remainingW - (count - 1) * gap) / count;
+            int stageW = (remainingW - (count - 1) * gap) / Math.Max(1, count);
 
             dpiStageValues = dpiStageList.ToArray();
 
@@ -1237,7 +1237,7 @@ namespace RazerBatteryTray
             bool isLogitechMouse = (selectedDevice != null && selectedDevice.Category == DeviceCategory.Mouse && (selectedDevice.Brand == "Logitech" || selectedDevice.Brand == "罗技"));
             bool isRapooMouse = (selectedDevice != null && selectedDevice.Category == DeviceCategory.Mouse && (selectedDevice.Brand == "Rapoo" || selectedDevice.Brand == "雷柏"));
             bool isValkyrieMouse = (selectedDevice != null && selectedDevice.Category == DeviceCategory.Mouse && (selectedDevice.Brand == "Valkyrie" || selectedDevice.Brand == "瓦尔基里"));
-            bool supportsAutoGameRate = (isRazerMouse || isLogitechMouse || isRapooMouse || isValkyrieMouse);
+            bool supportsAutoGameRate = (isRazerMouse || isLogitechMouse || isRapooMouse || isValkyrieMouse || MetapandaDeviceHelper.IsMetapanda(selectedDevice));
 
             // Row 3: 全屏游戏自动优化总开关 + 游戏管理 (恒定 Y = 112)
             int gameSwY = (int)(112 * dpiScale);
@@ -1275,8 +1275,8 @@ namespace RazerBatteryTray
             }
             if (btnGameDpiStages != null)
             {
-                int dpiCount = Math.Max(1, Math.Min(5, dpiStageList.Count));
-                int stageW = (availableW - (dpiCount - 1) * gap) / dpiCount;
+                int dpiCount = Math.Min(5, dpiStageList.Count);
+                int stageW = (availableW - (dpiCount - 1) * gap) / Math.Max(1, dpiCount);
                 for (int i = 0; i < btnGameDpiStages.Length; i++)
                 {
                     if (btnGameDpiStages[i] != null)
@@ -1391,7 +1391,7 @@ namespace RazerBatteryTray
             int targetStage = index + 1;
             int targetDpi = dpiStageList[index];
 
-            if (isGamingActive && autoGameDpiEnabled)
+            if (isGamingActive && autoGameDpiEnabled && !MetapandaDeviceHelper.IsMetapanda(selectedDevice))
             {
                 gameDpiStage = targetStage;
                 UpdateGameDpiButtonSelection(targetStage);
@@ -1399,6 +1399,11 @@ namespace RazerBatteryTray
             }
 
             var curDev = selectedDevice;
+            if (MetapandaDeviceHelper.IsMetapanda(curDev))
+            {
+                new Thread(() => { TrySetMetapandaDpiStage(curDev, targetStage, true); }) { IsBackground = true }.Start();
+                return;
+            }
             if (curDev != null && curDev.Brand == "Razer")
             {
                 string devId = curDev.DeviceId;
@@ -1649,7 +1654,7 @@ namespace RazerBatteryTray
             bool isValkyrieMouse = (selectedDevice != null &&
                                     selectedDevice.Category == DeviceCategory.Mouse &&
                                     (selectedDevice.Brand == "Valkyrie" || selectedDevice.Brand == "瓦尔基里"));
-            bool isAutoRateSupportedMouse = (isRazerMouse || isLogitechMouse || isRapooMouse || isValkyrieMouse);
+            bool isAutoRateSupportedMouse = (isRazerMouse || isLogitechMouse || isRapooMouse || isValkyrieMouse || MetapandaDeviceHelper.IsMetapanda(selectedDevice));
 
             // 1. 标题文字保持恒定简洁，不加点也不改色（复选框与按钮颜色已清晰呈现当前生效状态）
             if (lblRateTitle != null)
@@ -1703,9 +1708,16 @@ namespace RazerBatteryTray
                 currentActiveDpi = selectedDevice.Dpi;
             }
 
+            if (MetapandaDeviceHelper.IsMetapanda(selectedDevice))
+            {
+                currentActiveHz = selectedDevice.PollingRate;
+                currentActiveDpi = selectedDevice.Dpi;
+            }
+
             if (lblLiveRateBadge != null)
             {
-                bool showBadge = isAutoRateSupportedMouse && (autoGameRateEnabled || autoGameDpiEnabled);
+                bool showBadge = isAutoRateSupportedMouse && (autoGameRateEnabled || autoGameDpiEnabled) &&
+                    (!MetapandaDeviceHelper.IsMetapanda(selectedDevice) || currentActiveHz > 0);
                 lblLiveRateBadge.Visible = showBadge;
                 if (showBadge)
                 {
@@ -1724,7 +1736,7 @@ namespace RazerBatteryTray
             {
                 if (btnRates[i] != null && pollingRateValues != null && i < pollingRateValues.Length)
                 {
-                    bool isSel = (pollingRateValues[i] == desktopPollingRate);
+                    bool isSel = (pollingRateValues[i] == (MetapandaDeviceHelper.IsMetapanda(selectedDevice) && !isGamingActive ? selectedDevice.PollingRate : desktopPollingRate));
                     btnRates[i].Selected = isSel;
                     btnRates[i].IsPreset = (isSel && isGamingActive && autoGameRateEnabled);
                 }
@@ -1745,7 +1757,7 @@ namespace RazerBatteryTray
             }
 
             // 4. DPI 档位按钮分段高光联动：未使用时深绿预设 (IsPreset = true)，生效时亮绿激活 (IsPreset = false)
-            int effectiveDesktopStage = (desktopDpiStage > 0) ? desktopDpiStage : ((selectedDevice != null && selectedDevice.DpiStage > 0) ? selectedDevice.DpiStage : 1);
+            int effectiveDesktopStage = (MetapandaDeviceHelper.IsMetapanda(selectedDevice) && !isGamingActive) ? selectedDevice.DpiStage : (desktopDpiStage > 0) ? desktopDpiStage : ((selectedDevice != null && selectedDevice.DpiStage > 0) ? selectedDevice.DpiStage : 1);
             if (btnDpiStages != null)
             {
                 for (int i = 0; i < btnDpiStages.Length; i++)
@@ -1782,7 +1794,7 @@ namespace RazerBatteryTray
             bool isLogitechMouse = (selectedDevice != null && selectedDevice.Category == DeviceCategory.Mouse && (selectedDevice.Brand == "Logitech" || selectedDevice.Brand == "罗技"));
             bool isRapooMouse = (selectedDevice != null && selectedDevice.Category == DeviceCategory.Mouse && (selectedDevice.Brand == "Rapoo" || selectedDevice.Brand == "雷柏"));
             bool isValkyrieMouse = (selectedDevice != null && selectedDevice.Category == DeviceCategory.Mouse && (selectedDevice.Brand == "Valkyrie" || selectedDevice.Brand == "瓦尔基里"));
-            bool supportsAutoGameRate = (isRazerMouse || isLogitechMouse || isRapooMouse || isValkyrieMouse);
+            bool supportsAutoGameRate = (isRazerMouse || isLogitechMouse || isRapooMouse || isValkyrieMouse || MetapandaDeviceHelper.IsMetapanda(selectedDevice));
 
             // Row 4, 5, 6 仅在卡片展开且功能开启时展示（两档高度，两档展示）
             bool isOptExpanded = (autoGameRateEnabled || autoGameDpiEnabled);
@@ -1796,7 +1808,7 @@ namespace RazerBatteryTray
             if (lblGameDpiTitle != null) lblGameDpiTitle.Visible = false;
             if (btnGameDpiStages != null)
             {
-                int count = Math.Max(1, Math.Min(5, dpiStageList.Count));
+                int count = Math.Min(5, dpiStageList.Count);
                 for (int i = 0; i < btnGameDpiStages.Length; i++)
                 {
                     if (btnGameDpiStages[i] != null)
@@ -1899,7 +1911,7 @@ namespace RazerBatteryTray
         private void UpdatePerformanceCardHeightForCurrentDevice()
         {
             var dev = selectedDevice;
-            if (dev != null && (dev.Brand == "Razer" || dev.Brand == "Rapoo" || dev.Brand == "Logitech" || dev.Brand == "罗技" || dev.Brand == "Valkyrie" || dev.Brand == "瓦尔基里"))
+            if (dev != null && (dev.Brand == "Razer" || dev.Brand == "Rapoo" || dev.Brand == "Logitech" || dev.Brand == "罗技" || dev.Brand == "Valkyrie" || dev.Brand == "瓦尔基里" || MetapandaDeviceHelper.IsMetapanda(dev)))
             {
                 bool isOptExpanded = (autoGameRateEnabled || autoGameDpiEnabled);
                 int targetH = isOptExpanded ? (int)(255 * dpiScale) : (int)(148 * dpiScale);
@@ -1919,6 +1931,11 @@ namespace RazerBatteryTray
         private void OpenDpiManagementDialog()
         {
             var curDev = selectedDevice;
+            if (MetapandaDeviceHelper.IsMetapanda(curDev))
+            {
+                MessageBox.Show(this, "Metapanda 当前仅支持切换已有 DPI 档位，请使用主界面的档位按钮。暂不支持修改硬件 DPI 档位表。", "Metapanda DPI", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
             if (curDev == null || (curDev.Brand != "Razer" && curDev.Brand != "Valkyrie" && curDev.Brand != "Logitech" && curDev.Brand != "罗技" && curDev.Brand != "Rapoo")) return;
 
             int curStage = curDev.DpiStage > 0 ? curDev.DpiStage : 1;
@@ -2087,7 +2104,7 @@ namespace RazerBatteryTray
             if (curDev == null) return;
 
             string devName = !string.IsNullOrEmpty(curDev.DisplayName) ? curDev.DisplayName : (curDev.Brand + " 鼠标");
-            int[] supported = (curDev.SupportedPollingRates != null && curDev.SupportedPollingRates.Length > 0)
+            int[] supported = MetapandaDeviceHelper.IsMetapanda(curDev) ? new int[] { 125, 1000 } : (curDev.SupportedPollingRates != null && curDev.SupportedPollingRates.Length > 0)
                 ? curDev.SupportedPollingRates
                 : new int[] { 125, 250, 500, 1000, 2000, 4000, 8000 };
 

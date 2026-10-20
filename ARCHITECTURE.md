@@ -133,3 +133,31 @@ D:\FerrisPulse · 灵脉\
    严禁在控件、窗口、边距、圆角处使用硬编码像素数值。必须统一通过 `S(...)` 或 `DpiScale` 计算缩放后的物理尺寸。
 5. **单实例安全互斥**：
    严禁通过遍历进程名暴力调用 `Process.Kill()`。必须使用系统命名全局互斥体 `Mutex("Global\\FerrisPulse_SingleInstance_Mutex")` 进行优雅管理。
+
+## 4. 玄熊猫协议与按应用配置
+
+玄熊猫当前以按应用配置为主要入口，用户操作见 [玄熊猫使用指南](docs/metapanda-guide.md)。以下模块均遵循 C# 5 / .NET 4.0、零外部依赖与 UTF-8 BOM 约束。
+
+| 模块 / 路由 | 职责与契约 |
+| :--- | :--- |
+| `src/Hardware/MetapandaProtocol.cs` | 纯 17 字节 Report `08` 编解码；校验总和、命令、读内存地址/长度与写入回显。读取实际电量、已有 DPI 表与当前回报率；未知扩展编码不猜测。仅构造已有档位切换及 125/1000 Hz 命令，不改写 DPI 表。 |
+| `src/Hardware/MetapandaDeviceHelper.cs` | 枚举 VID `3554` / PID `F5A9`、`F5AB` 且 UsagePage `FF02` / Usage `2`、输入输出均 17 字节的端点；使用有超时与取消清理的原生重叠 I/O。每端点串行化通信，写入后重新读取并确认目标设置。 |
+| `src/Hardware/DeviceManager.cs` | 接入玄熊猫独立扫描结果，保留各 HID 端点身份。`VgnDeviceHelper.cs` 与 `UniversalGamingDeviceHelper.cs` 排除这些已知端点，避免重复归类。 |
+| `src/Models/ApplicationMouseProfile.cs` | 规则字段为完整 exe 路径、端点 ID、从 1 开始的 DPI 档位、125/1000 Hz 与启用状态；拒绝只有文件名、盘符相对路径、通配符等规则。 |
+| `src/Services/ApplicationMouseProfileService.cs` | 无硬件副作用的规则持久化与状态转换服务；按 exe 完整路径（忽略大小写）及精确端点 ID 匹配，第一个启用且有效的规则优先。保存使用同目录临时文件和原子替换，路径为 `%LocalAppData%\FerrisPulse\application-profiles.xml`。 |
+| `src/UI/Forms/ApplicationMouseProfilesDialog.cs` | 添加/浏览 exe、选择端点、编辑档位和回报率、校验重复规则与保存；编辑器本身不写硬件。 |
+| `src/UI/Forms/MainForm.Metapanda.cs` | 托盘顶部入口、前台完整路径读取、500 ms 调度和 750 ms 前台稳定判定、串行工作项及应用/退出恢复；编辑期间暂停调度。 |
+| `src/UI/Forms/MainForm.Hardware.cs` / `MainForm.UI.cs` | 主界面展示真实档位与电量，仅切换已有 DPI 档位、限制 125/1000 Hz；应用规则持有端点时旧游戏自动设置让位。 |
+
+### 身份、状态与恢复约束
+
+- `DeviceId` 与 `HardwareFingerprint` 使用 `Metapanda:` 加完整 HID 路径，不按某一只样机序列号硬编码，也不按 VID/PID 合并同型号端点。无线与有线是独立端点；查找失败时不回退到任意同型号设备。此隔离设计不能代替多只同型号鼠标的实物 UI 验证。
+- `QueryDevices()` / `QueryDevice(id)` 返回端点实际状态；电量未知为 `-1`，未知 DPI/回报率不伪造默认值。已知基础 DPI 编码按 `(值 + 1) × 50` 解码；非零扩展字节尚未验证，整组设置保持未知。
+- `SetDpiStage(id, stage)` / `SetPollingRate(id, hz)` 只操作指定已连接端点，拒绝越界或未知状态；收到匹配回显后仍需读回目标设置才返回成功。支持上限为 1000 Hz，不能据此宣称支持 4K。
+- 服务首次应用规则前保存该端点原始档位与回报率；规则间切换沿用原始快照。已知前台路径无匹配时恢复快照，恢复成功才释放；暂时无法读取前台路径不等同于规则退出。断连会丢弃该端点的运行期快照，不转移到其他设备。
+- `Update()` 与编辑访问由调用方串行化。应用回调须同时确认 DPI 档位和回报率，只有两项均成功才能返回 `true`；失败清除成功缓存，下一次调度重试。主窗体回调对回报率写入失败尝试回滚，随后以实际回读为准。
+- `RestoreAll()` 为显式退出恢复路径，仍只处理连接且状态可确认的端点；失败保留快照供存活的服务重试，不能保证断电、强制结束或退出时通信失败后的恢复。
+
+### 当前验证边界
+
+无线实机已确认 85% 电量、800/1600 DPI 档位及 125/1000 Hz 实际写入与回读。有线 `F5AB` 有抓包依据，尚未据此确认有线实机写入；高 DPI 扩展编码、4K 回报率及多只同型号设备的完整实物交互均不在当前验证结论内。使用时应关闭官方 Mouse Drive Beta，避免通信竞争。

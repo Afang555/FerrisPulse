@@ -579,6 +579,7 @@ namespace RazerBatteryTray
 
         public static bool IsSupportedGamingDevice(int vid, string path, string prod)
         {
+            if (MetapandaDeviceHelper.IsKnownDevicePath(path)) return false;
             switch (vid)
             {
                 case VID_LAMZU_OFFICIAL:

@@ -308,7 +308,7 @@ namespace RazerBatteryTray
                         {
                             IntPtr pDevicePath = new IntPtr(detailBuffer.ToInt64() + 4);
                             string devicePath = Marshal.PtrToStringAuto(pDevicePath);
-                            if (devicePath != null && (devicePath.ToLower().Contains("vid_3554") || devicePath.ToLower().Contains("vgn")))
+                            if (devicePath != null && !MetapandaDeviceHelper.IsKnownDevicePath(devicePath) && (devicePath.ToLower().Contains("vid_3554") || devicePath.ToLower().Contains("vgn")))
                             {
                                 IntPtr handle = RazerDeviceHelper.CreateFile(
                                     devicePath,

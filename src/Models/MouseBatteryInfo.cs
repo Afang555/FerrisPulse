@@ -134,9 +134,8 @@ namespace RazerBatteryTray
                 if (Brand == "NuPhy" || Category == DeviceCategory.Keyboard) return Color.FromArgb(0, 229, 255);
                 if (Brand == "Logitech" || Brand == "罗技") return Color.FromArgb(0, 174, 239);
                 if (Brand == "Rapoo" || Brand == "雷柏") return Color.FromArgb(0, 185, 255);
-                if (Brand == "Metapanda") return Color.FromArgb(255, 140, 40);
                 if (Brand == "VGN") return Color.FromArgb(255, 120, 0);
-                if (Brand == "Razer" || Brand == "雷蛇") return Color.FromArgb(0, 230, 118);
+                if (Brand == "Razer" || Brand == "雷蛇" || Brand == "Metapanda") return Color.FromArgb(0, 230, 118);
                 return Color.FromArgb(0, 230, 118);
             }
         }

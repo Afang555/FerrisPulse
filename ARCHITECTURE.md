@@ -155,6 +155,10 @@ D:\github\mouse\
 | `src/UI/Forms/MainForm.Metapanda.Refresh.cs` | 选定端点独立回读；活动/可见约 1 秒、空闲约 5 秒；一个快速查询在途，UI 线程发布并按时间戳排除旧状态。 |
 | `src/Services/ActivityRefreshSchedule.cs` | 单调时间调度与并发保护；失败回调释放占用，避免窗口句柄变化后停刷。 |
 | `src/Services/DiagnosticLog.cs` | 本机最多约 10 MiB 的事件与电量 CSV；重复采样、电压/等级/估算值、设置结果和耗时，端点哈希与安全 I/O 失败。 |
+| `src/Services/BatteryDisplayTracker.cs` | 每端点有效放电最低值；充电重置，失败/休眠保留值及有效性，纯低电量资格判断。 |
+| `src/Services/ForegroundWindowSnapshot.cs` | 单次实际前台 HWND/PID/进程与有限权限路径查询，前台再次核对，不读取标题/闪烁状态。 |
+| `src/Services/MetapandaGameSession.cs` | 前台防抖与目标/实际状态校正、可重试应用/恢复、原始 X/Y 基线与未控制参数保护。 |
+| `src/UI/Forms/MainForm.Metapanda.GameMode.cs` | 统一电竞 worker、规则锁/优先级、目标版本和前台取消检查、判定与写入结果日志。 |
 | `src/UI/Forms/MainForm.Hardware.cs` / `MainForm.UI.cs` | 主界面和游戏模式按端点能力显示回报率，F5AC 保留全部六档按钮。应用规则优先于旧游戏自动设置。 |
 | `src/Hardware/DeviceManager.cs` / `VgnDeviceHelper.cs` / `UniversalGamingDeviceHelper.cs` | 独立扫描并排除已知玄熊猫路径，保留完整端点身份，避免共享 VID 导致重复归类或跨设备命令。 |
 

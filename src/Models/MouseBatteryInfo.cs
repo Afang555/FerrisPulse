@@ -34,6 +34,8 @@ namespace RazerBatteryTray
         public string DeviceName { get; set; }
         public int BatteryPercent { get; set; }
         public double ExactBatteryPercent { get; set; }
+        // True when the current read failed/slept; a retained display must not trigger an alert.
+        public bool IsBatteryReadingStale { get; set; }
         public bool IsCharging { get; set; }
         public DateTime LastUpdated { get; set; }
 

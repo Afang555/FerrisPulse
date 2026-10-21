@@ -27,6 +27,10 @@ if($rows.Count -ne 13){throw 'FAIL: repeated samples must be retained, not just 
 if($rows[0].voltage_mv -ne '4038' -or $rows[0].device_level -ne '85' -or $rows[0].estimate_percent -ne '84.5' -or $rows[-1].estimate_percent -ne '88.75'){throw 'FAIL: original voltage and independently expected estimates missing'}
 if($rows[-1].dpi_x -ne '1600' -or $rows[-1].polling_hz -ne '125' -or $rows[-1].reason -ne 'manual' -or $rows[-1].elapsed_ms -ne '507'){throw 'FAIL: reproduction context missing'}
 if($csv.Contains('private-hid-path')){throw 'FAIL: raw device path leaked'}
+$state.BatteryPercent=83;$state.ExactBatteryPercent=83
+if(-not $log.RecordBattery($state,$raw,'filtered',12)){throw 'filtered sample write failed'}
+$filtered=@(Get-Content -LiteralPath (Join-Path $work 'battery.csv')|ConvertFrom-Csv)[-1]
+if($filtered.estimate_percent -ne '88.75' -or $filtered.display_percent -ne '83'){throw 'FAIL: smoothing overwrote original battery estimate in the diagnostic record'}
 if(-not $log.Write('setting','target=3 result=confirmed')){throw 'event write failed'}
 $smallDir=Join-Path $work 'rotation'
 $small=$ctor.Invoke([object[]]@([string]$smallDir,[int]1024,[int]3))

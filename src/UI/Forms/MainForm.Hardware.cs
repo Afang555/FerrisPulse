@@ -866,9 +866,10 @@ namespace RazerBatteryTray
             gameMonitorTimer = new System.Windows.Forms.Timer();
             gameMonitorTimer.Interval = 1000;
             gameMonitorTimer.Tick += (s, e) => {
-                if (!autoGameRateEnabled && !autoGameDpiEnabled) return;
+                if (!autoGameRateEnabled && !autoGameDpiEnabled && !HasPendingMetapandaGameSession()) return;
                 var curDev = selectedDevice;
                 if (curDev == null) return;
+                if (MetapandaDeviceHelper.IsMetapanda(curDev)) { TickMetapandaGameMode(curDev); return; }
                 if (MetapandaDeviceHelper.IsMetapanda(curDev) && HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
                 if (!MetapandaDeviceHelper.IsMetapanda(curDev) && curDev.Brand != "Razer" && curDev.Brand != "Valkyrie" && curDev.Brand != "Logitech" && curDev.Brand != "罗技" && curDev.Brand != "Rapoo") return;
 
@@ -918,11 +919,7 @@ namespace RazerBatteryTray
                     if (inGameTickCount >= 2 && !isGamingActive)
                     {
                         isGamingActive = true;
-                        if (MetapandaDeviceHelper.IsMetapanda(curDev))
-                        {
-                            BeginMetapandaGameTransition(curDev);
-                            return;
-                        }
+
                         if (autoGameRateEnabled)
                         {
                             ApplyGamePollingRate();
@@ -958,6 +955,7 @@ namespace RazerBatteryTray
         {
             var curDev = selectedDevice;
             if (curDev == null) return;
+            if (MetapandaDeviceHelper.IsMetapanda(curDev)) { TickMetapandaGameMode(curDev); return; }
             if (MetapandaDeviceHelper.IsMetapanda(curDev) && HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
             int targetHz = gamePollingRate;
             string brand = curDev.Brand;
@@ -1029,6 +1027,7 @@ namespace RazerBatteryTray
         {
             var curDev = selectedDevice;
             if (curDev == null) return;
+            if (MetapandaDeviceHelper.IsMetapanda(curDev)) { TickMetapandaGameMode(curDev); return; }
             if (MetapandaDeviceHelper.IsMetapanda(curDev) && HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
             int targetHz = desktopPollingRate;
             string brand = curDev.Brand;
@@ -1102,9 +1101,7 @@ namespace RazerBatteryTray
 
             if (MetapandaDeviceHelper.IsMetapanda(curDev))
             {
-                int stage = gameDpiStage;
-                if (desktopDpiStage <= 0 && curDev.DpiStage > 0) desktopDpiStage = curDev.DpiStage;
-                new Thread(() => { TrySetMetapandaDpiStage(curDev, stage); }) { IsBackground = true }.Start();
+                TickMetapandaGameMode(curDev);
                 return;
             }
 
@@ -1189,21 +1186,10 @@ namespace RazerBatteryTray
         private void RestoreDesktopDpiStage()
         {
             var curDev = selectedDevice;
-            if (curDev == null || desktopDpiStage <= 0) return;
+            if (curDev == null) return;
+            if (MetapandaDeviceHelper.IsMetapanda(curDev)) { TickMetapandaGameMode(curDev); return; }
+            if (desktopDpiStage <= 0) return;
             if (MetapandaDeviceHelper.IsMetapanda(curDev) && HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
-
-            if (MetapandaDeviceHelper.IsMetapanda(curDev))
-            {
-                int stage = desktopDpiStage;
-
-                new Thread(() => {
-                    if (TrySetMetapandaDpiStage(curDev, stage))
-                    {
-                        desktopDpiStage = 0;
-                    }
-                }) { IsBackground = true }.Start();
-                return;
-            }
 
             int targetStage = desktopDpiStage;
             if (targetStage < 1 || targetStage > 5) targetStage = 1;
@@ -3011,7 +2997,7 @@ namespace RazerBatteryTray
             }
 
             string normalTimeStr = info.LastUpdated.ToString("HH:mm:ss");
-            string chgDetail = info.IsCharging ? " · 正在充电" : " · 自动侦测硬件插拔";
+            string chgDetail = info.IsBatteryReadingStale ? " · 电量暂未读到（保留上次有效值）" : info.IsCharging ? " · 正在充电" : " · 自动侦测硬件插拔";
             lblUpdateTime.Text = "最后同步: " + normalTimeStr + chgDetail;
 
             // Update Performance Card
@@ -3022,7 +3008,7 @@ namespace RazerBatteryTray
                 UpdateStatusDisplay();
                 UpdateTrayIcon(info.BatteryPercent, info.IsCharging, true, false);
 
-                if (lowBatteryAlertEnabled && !info.IsCharging)
+                if (lowBatteryAlertEnabled && BatteryAlertPolicy.CanAlert(info))
                 {
                     if (info.BatteryPercent <= 20)
                     {
@@ -3037,7 +3023,7 @@ namespace RazerBatteryTray
                         lastLowAlertFired = false;
                     }
                 }
-                else
+                else if (!lowBatteryAlertEnabled || info.IsCharging || (!info.IsBatteryReadingStale && info.BatteryPercent > 20))
                 {
                     lastLowAlertFired = false;
                 }

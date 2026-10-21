@@ -148,7 +148,7 @@ namespace RazerBatteryTray
             state.SupportedPollingRates = endpoint.Pid == 0xF5AC ? new int[] { 125, 250, 500, 1000, 2000, 4000 } : new int[] { 125, 1000 }; state.MaxPollingRate = endpoint.Pid == 0xF5AC ? 4000 : 1000;
             state.IsDonglePresent = true; state.LastUpdated = DateTime.Now;
             state.IsConnected = Online(handle, endpoint);
-            if (!state.IsConnected) { DiagnosticLog.Default.RecordBattery(state, null, reason, elapsed.ElapsedMilliseconds); return state; }
+            if (!state.IsConnected) { BatteryDisplayTracker.Default.Apply(state); DiagnosticLog.Default.RecordBattery(state, null, reason, elapsed.ElapsedMilliseconds); return state; }
             int battery; bool charging; double estimate;
             batteryReport = Exchange(handle, MetapandaProtocol.BuildCommand(4), endpoint.InputLength);
             if (MetapandaProtocol.DecodeBattery(batteryReport, out battery, out charging, out estimate))
@@ -162,6 +162,7 @@ namespace RazerBatteryTray
             }
             if (complete) MetapandaProtocol.DecodeSettings(memory, state);
             state.LastUpdated = DateTime.Now;
+            BatteryDisplayTracker.Default.Apply(state);
             DiagnosticLog.Default.RecordBattery(state, batteryReport, reason, elapsed.ElapsedMilliseconds);
             return state;
         }

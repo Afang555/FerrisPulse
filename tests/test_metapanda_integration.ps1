@@ -13,7 +13,7 @@ foreach ($setter in @('SetUnownedMetapandaDpiStage','SetUnownedMetapandaPollingR
     if ($profiles -notmatch ($setter + '[\s\S]+?lock \(metapandaProfileGate\)[\s\S]+?HasActiveProfile')) { throw 'Ownership decision must serialize with setting write.' }
 }
 $hardware = Get-Content (Join-Path $root 'src/UI/Forms/MainForm.Hardware.cs') -Raw
-if ($hardware -notmatch 'BeginMetapandaGameTransition\(curDev\)' -or $profiles -notmatch 'CaptureMetapandaDesktopSettings\(curDev\)') { throw 'Game restore must capture the actual Metapanda desktop baseline.' }
+# Game baselines, retries and stale restores are exercised by test_game_mode_stability.ps1.
 if ($profiles -notmatch 'RestoreAll\(') { throw 'Shutdown must restore profile-owned endpoints.' }
 Write-Host 'PASS: discovery, ownership serialization, fresh snapshots and shutdown integration boundaries'
 

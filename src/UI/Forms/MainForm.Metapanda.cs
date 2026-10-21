@@ -65,35 +65,6 @@ namespace RazerBatteryTray
                 return MetapandaDeviceHelper.SetPollingRate(deviceId, hz, out confirmed);
             }
         }
-        private void BeginMetapandaGameTransition(MouseBatteryInfo curDev)
-        {
-            ThreadPool.QueueUserWorkItem(_ =>
-            {
-                CaptureMetapandaDesktopSettings(curDev);
-                try
-                {
-                    BeginInvoke(new Action(() =>
-                    {
-                        if (!isGamingActive || selectedDevice == null || selectedDevice.DeviceId != curDev.DeviceId ||
-                            HasActiveMetapandaApplicationProfile(curDev.DeviceId)) return;
-                        if (autoGameRateEnabled) ApplyGamePollingRate();
-                        if (autoGameDpiEnabled) ApplyGameDpiStage();
-                    }));
-                }
-                catch (InvalidOperationException) { }
-            });
-        }
-        private void CaptureMetapandaDesktopSettings(MouseBatteryInfo device)
-        {
-            lock (metapandaProfileGate)
-            {
-                if (metapandaProfiles != null && metapandaProfiles.HasActiveProfile(device.DeviceId)) return;
-                MouseBatteryInfo actual = MetapandaDeviceHelper.QueryDevice(device.DeviceId);
-                if (actual == null || !actual.IsConnected) return;
-                if (actual.DpiStage > 0) desktopDpiStage = actual.DpiStage;
-                if (ApplicationMouseProfile.SupportsPollingRate(actual, actual.PollingRate)) desktopPollingRate = actual.PollingRate;
-            }
-        }
         private void OpenMetapandaApplicationProfiles()
         {
             if (metapandaProfileBusy != 0) return;
@@ -109,15 +80,8 @@ namespace RazerBatteryTray
         }
         private static string MetapandaForegroundExecutable()
         {
-            IntPtr hwnd = GetForegroundWindow();
-            if (hwnd == IntPtr.Zero) return "";
-            uint processId; GetWindowThreadProcessId(hwnd, out processId);
-            try
-            {
-                using (Process process = Process.GetProcessById((int)processId))
-                    return process.MainModule.FileName;
-            }
-            catch { return ""; }
+            ForegroundWindowSnapshot foreground = ForegroundWindowSnapshot.Capture();
+            return foreground.Known ? foreground.ExecutablePath : "";
         }
         private void TickMetapandaApplicationProfiles()
         {
@@ -192,6 +156,7 @@ namespace RazerBatteryTray
             {
                 if (metapandaProfiles != null)
                     metapandaProfiles.RestoreAll(activeDevices == null ? new List<MouseBatteryInfo>() : new List<MouseBatteryInfo>(activeDevices), ApplyMetapandaApplicationSettings);
+                RestoreMetapandaGameSessions();
             }
         }
     }

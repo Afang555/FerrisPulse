@@ -26,10 +26,12 @@ namespace RazerBatteryTray
         {
             if (state == null) return false;
             bool valid = MetapandaProtocol.IsValid(report) && report[1] == 4 && report[5] == 2;
+            int rawPercent; bool rawCharging; double rawEstimate;
+            if (!MetapandaProtocol.DecodeBattery(report, out rawPercent, out rawCharging, out rawEstimate)) rawEstimate = -1;
             string[] cells = new string[] { DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture), DeviceKey(state.DeviceId), Clean(reason),
                 state.IsConnected ? "1" : "0", valid ? report[6].ToString(CultureInfo.InvariantCulture) : "",
                 valid ? (report[8] * 256 + report[9]).ToString(CultureInfo.InvariantCulture) : "", valid ? report[7].ToString(CultureInfo.InvariantCulture) : "",
-                state.ExactBatteryPercent.ToString("0.###", CultureInfo.InvariantCulture), state.BatteryPercent.ToString(CultureInfo.InvariantCulture),
+                rawEstimate.ToString("0.###", CultureInfo.InvariantCulture), state.BatteryPercent.ToString(CultureInfo.InvariantCulture),
                 state.Dpi.ToString(CultureInfo.InvariantCulture), state.DpiY.ToString(CultureInfo.InvariantCulture), state.DpiStage.ToString(CultureInfo.InvariantCulture),
                 state.DpiStageCount.ToString(CultureInfo.InvariantCulture), state.PollingRate.ToString(CultureInfo.InvariantCulture),
                 elapsed.ToString(CultureInfo.InvariantCulture), report == null ? "" : BitConverter.ToString(report).Replace("-", "").ToLowerInvariant() };

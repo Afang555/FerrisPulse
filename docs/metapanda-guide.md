@@ -157,4 +157,4 @@ CSV 的 `estimate_percent` 保留报文的原始换算值，`display_percent` �
 
 排查时在 `diagnostic.log` 搜索 `game-focus`、`game-reconcile`、`game-error`、`game-shutdown`。日志记录 HWND/PID、进程名、身份是否可读、候选/稳定游戏状态、目标档位/Hz、实际回读和确认/重试/过期取消原因；不记录聊天内容或窗口标题。后台微信闪烁若没有改变实际前台，应继续识别游戏；实际切到微信后则应恢复办公，切回稳定游戏后再次应用电竞。
 
-新增 `test_battery_display_stability.ps1`、`test_game_mode_stability.ps1`，与原有 23 项合计 25 项通过。无畏契约“切出—微信消息闪烁—切回”的完整现场复验正在等待用户操作，不能以纯状态机测试代替这项结果。
+新增 `test_battery_display_stability.ps1`、`test_game_mode_stability.ps1`，与原有 23 项合计 25 项通过。用户于 2026-10-21 明确安排暂不启动游戏，保留候选及日志，日后实际玩游戏再复验。无畏契约“切出—微信消息闪烁—切回”的现场项目仍未完成，不能以纯状态机测试代替结果。游戏后记录异常发生的大致时间与鼠标速度变化，并在轮换覆盖前另存相关日志，便于对照。

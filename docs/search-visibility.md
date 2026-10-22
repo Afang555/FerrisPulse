@@ -16,7 +16,7 @@ GitHub Pages 使用 `MetapandaMouse05` 分支的 `/docs` 目录；`docs/index.ht
 4. 验证后提交 `https://afang555.github.io/FerrisPulse/sitemap.xml`，检查首页 URL 并按控制台提供的功能请求收录。
 5. 验证标签需长期保留；只需公开验证标签，不需要账号密码、访问令牌或会话 Cookie。
 
-Google 验证标签已按用户提供的内容加入首页 head，需长期保留；等待用户在 Search Console 点击验证并确认结果。Bing 标签尚未提供。不能据标签发布宣称已完成站长验证、提交收录或已经被索引。HTTP 200 和网站发布成功只表示页面可以访问。抓取、收录、排名与实际搜索流量分别判断。
+Google 验证标签已按用户提供的内容加入首页 head，需长期保留；等待用户在 Search Console 点击验证并确认结果。Bing 验证标签已于 2026-10-23 按用户提供的内容加入首页 head，需长期保留；发布后由用户在 Bing Webmaster Tools 点击验证并确认结果。不能据标签发布宣称已完成站长验证、提交收录或已经被索引。HTTP 200 和网站发布成功只表示页面可以访问。抓取、收录、排名与实际搜索流量分别判断。
 
 项目位于 github.io 的 /FerrisPulse/ 子路径，不能通过此仓库管理域名根目录的 robots.txt，不在子路径放置无效 robots.txt 来宣称控制全站抓取。sitemap 通过站长后台提交。
 

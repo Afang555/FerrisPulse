@@ -15,6 +15,8 @@
 - **上游项目**：[Ferris-echo/FerrisPulse](https://github.com/Ferris-echo/FerrisPulse)
 - **问题反馈**：[提交鼠标型号与复现信息](https://github.com/Afang555/FerrisPulse/issues)
 
+**快速导航**：[下载](#玄熊猫-p1-驱动优化工具下载) · [功能](#主要功能电量dpi回报率与游戏切换) · [使用方法](#使用方法设置玄熊猫-p1-鼠标参数) · [常见问题](#常见问题) · [适配指南](docs/metapanda-guide.md)
+
 ## 玄熊猫 P1 驱动优化工具下载
 
 当前公开发布版本：**[v2.1.4 · 玄熊猫电量与游戏模式稳定性](https://github.com/Afang555/FerrisPulse/releases/tag/v2.1.4)**，发布于 2026-10-22。可下载单文件程序，或选择包含使用说明、更新日志和许可证的便携包。
@@ -23,7 +25,7 @@
 - [下载 v2.1.4 便携包 ZIP](https://github.com/Afang555/FerrisPulse/releases/download/v2.1.4/FerrisPulse_v2.1.4_Portable.zip)
 - [查看发布说明、校验文件与历史版本](https://github.com/Afang555/FerrisPulse/releases)
 
-v2.1.4 包含休眠电量误报处理、放电期间最低值显示、游戏切回后的设置校正与统一绿色配色，发布构建已通过 25 项相关回归。**无畏契约全屏窗口模式切出、后台微信闪烁、再切回的实机复验仍待完成**，发布不代表该现场问题已经通过验收。详情见 [使用指南](docs/metapanda-guide.md) 和 [缺陷记录](docs/metapanda-regressions.md)。
+v2.1.4 包含休眠电量误报处理、放电期间最低值显示、游戏切回后的设置校正与统一绿色配色，发布构建已通过 25 项相关回归。2026-10-23 用户反馈游戏实机切换 DPI 约需 1 秒，使用正常；该耗时为用户观察值，尚未结合本轮日志计时，微信同时闪烁的具体复现条件未单独确认。详情见 [使用指南](docs/metapanda-guide.md) 和 [缺陷记录](docs/metapanda-regressions.md)。
 
 ## 主要功能：电量、DPI、回报率与游戏切换
 
@@ -88,7 +90,7 @@ v2.1.4 包含休眠电量误报处理、放电期间最低值显示、游戏切�
 
 ### 游戏切回来后 DPI 没恢复，如何排查？
 
-检查规则选择的是否为实际游戏进程，而非启动器，并记录切出、切回的时间。v2.1.4 增加前台进程、规则匹配和设置校正日志；无畏契约全屏窗口模式下切回、同时微信任务栏闪烁的实机场景仍待复验，暂不宣称已完成验证。
+检查规则选择的是否为实际游戏进程，而非启动器，并记录切出、切回的时间。v2.1.4 增加前台进程、规则匹配和设置校正日志；2026-10-23 用户反馈游戏实机约 1 秒完成 DPI 切换，使用正常。如再次异常，请保留对应时间段日志；微信同时闪烁的具体条件尚未单独确认。
 
 ### 程序日志在哪里？
 
@@ -119,6 +121,12 @@ build.bat
 - [系统架构](ARCHITECTURE.md)与 [维护入口](AGENTS.md)。
 
 原项目还提供其他品牌的外设能力；本分支保留相关框架，具体支持以对应型号协议和实测为准。希望适配其他鼠标时，请在 [Issues](https://github.com/Afang555/FerrisPulse/issues) 提供完整型号、连接方式、接收器/固件版本与 VID/PID，必要时补充脱敏协议样本。
+
+## English overview
+
+FerrisPulse is an open-source Windows mouse utility. This community fork focuses on **Metapanda P1 series** mouse support and is based on [Ferris-echo/FerrisPulse](https://github.com/Ferris-echo/FerrisPulse). It provides battery monitoring, existing DPI stage selection, polling rate controls for the verified 4K receiver, per-application settings, and local diagnostic logs.
+
+Verified hardware: 玄派玄熊猫 3395 P1 Pro Max 4K with the F5AC receiver. Other models and firmware require separate validation. This is not an official vendor driver. See [Releases](https://github.com/Afang555/FerrisPulse/releases) for downloads and [the usage guide](docs/metapanda-guide.md) for compatibility and limitations.
 
 ## 上游项目、二次开发说明与许可证
 

@@ -1,15 +1,15 @@
 {
-  "latestVersion": "2.1.3",
-  "releaseDate": "2026-10-21",
+  "latestVersion": "2.1.4",
+  "releaseDate": "2026-10-22",
   "minSupportedVersion": "1.0.0",
-  "downloadUrl": "https://github.com/Afang555/FerrisPulse/releases/download/v2.1.3/FerrisPulse.exe",
-  "sha256": "2cc18cbadac2aedf852cbcdf451214e5554a7baa991048b2b2666d69d3eeb678",
-  "fileSize": 792576,
+  "downloadUrl": "https://github.com/Afang555/FerrisPulse/releases/download/v2.1.4/FerrisPulse.exe",
+  "sha256": "aa426063bd431921e03257ef56a4e3809b001f92abf0b4e592881c440432d2f7",
+  "fileSize": 800768,
   "changelog": [
-    "修复电量等级长期不变：非充电时按 P1 电压曲线更新估算值。",
-    "新增本机滚动诊断日志、连续电量 CSV 与可复验参数。",
-    "窗口打开/鼠标活动约每秒回读，托盘空闲约每5秒回读。",
-    "常用回报率125/1000/4000 Hz可自选保存，保留全部六档能力。",
-    "修复DPI即时按钮和浮窗反馈；默认关闭自动检查更新。"
+    "修复未知、休眠及保留旧电量触发低电量提醒的问题。",
+    "同一放电阶段按端点保留有效最低电量，充电及新放电阶段重置基线。",
+    "游戏模式增加真实前台身份判定、串行校正与失败重试，避免过期恢复覆盖游戏设置。",
+    "保留本机诊断与原始电量日志，玄熊猫界面统一绿色强调色。",
+    "已通过相关自动回归；无畏契约切出再切回的完整现场复验仍待完成。"
   ]
 }

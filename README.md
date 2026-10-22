@@ -10,6 +10,7 @@
 
 当前已在 **玄派玄熊猫 3395 P1 Pro Max 4K + 4K 接收器**上验证。P1 系列是本项目的适配方向，其他 P1 型号、接收器和固件版本仍需逐一验证；不能仅凭系列名称或相同 VID 判断兼容。
 
+- **项目网站**：[玄派玄熊猫 P1 驱动优化工具](https://afang555.github.io/FerrisPulse/)
 - **项目源码**：[Afang555/FerrisPulse](https://github.com/Afang555/FerrisPulse)
 - **主分支**：[MetapandaMouse05](https://github.com/Afang555/FerrisPulse/tree/MetapandaMouse05)
 - **上游项目**：[Ferris-echo/FerrisPulse](https://github.com/Ferris-echo/FerrisPulse)
